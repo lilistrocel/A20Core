@@ -1,0 +1,200 @@
+# =====================================================
+# Communication Sheet Template
+# Version: 1.0
+# Copy this template for each new micro-app
+# =====================================================
+
+app_metadata:
+  app_id: "your-app-id"  # lowercase-with-dashes
+  app_name: "Your App Name"
+  version: "1.0.0"  # Semantic versioning
+  communication_sheet_version: "1.0"
+  description: "Brief description of what this app does"
+  maintainer: "team@company.com"
+
+# =====================================================
+# Entity Definitions
+# =====================================================
+entities:
+  - entity_name: "ExampleEntity"  # PascalCase
+    description: "Description of this entity"
+    version: "1.0"
+
+    # JSON Schema definition
+    schema:
+      type: "object"
+      required: ["id", "name", "status"]
+      properties:
+        id:
+          type: "string"
+          description: "Unique identifier"
+          read_only: true
+        name:
+          type: "string"
+          description: "Entity name"
+          minLength: 1
+          maxLength: 100
+        status:
+          type: "string"
+          enum: ["active", "inactive", "archived"]
+          description: "Current status"
+        created_at:
+          type: "string"
+          format: "date-time"
+          read_only: true
+        updated_at:
+          type: "string"
+          format: "date-time"
+          read_only: true
+
+    # Field-specific behaviors
+    field_behaviors:
+      status:
+        read_only: false
+        impacts:
+          - entity: "RelatedEntity"
+            app: "other-app"
+            description: "Status changes trigger related entity updates"
+        allowed_transitions:
+          active: ["inactive", "archived"]
+          inactive: ["active", "archived"]
+          archived: []
+
+      calculated_field:
+        read_only: true
+        calculated_by: "your-app-id"
+        calculation_description: "How this field is calculated"
+        refresh_trigger: ["field1", "field2"]
+
+    # CRUD Operations
+    operations:
+      create:
+        endpoint: "/api/v1/example-entities"
+        method: "POST"
+        permissions_required: ["example.create"]
+        triggers_events: ["example_entity.created"]
+
+      update:
+        endpoint: "/api/v1/example-entities/{id}"
+        method: "PUT"
+        permissions_required: ["example.update"]
+        triggers_events: ["example_entity.updated"]
+        validation:
+          - "Cannot update archived entities"
+          - "Status transitions must follow allowed_transitions"
+
+      delete:
+        endpoint: "/api/v1/example-entities/{id}"
+        method: "DELETE"
+        permissions_required: ["example.delete"]
+        soft_delete: true
+        triggers_events: ["example_entity.deleted"]
+
+      query:
+        endpoint: "/api/v1/example-entities"
+        method: "GET"
+        permissions_required: ["example.read"]
+        filters:
+          - field: "status"
+            operators: ["eq", "in"]
+          - field: "created_at"
+            operators: ["gte", "lte", "between"]
+          - field: "name"
+            operators: ["like"]
+        pagination:
+          default_limit: 50
+          max_limit: 1000
+        sorting:
+          allowed_fields: ["name", "created_at", "updated_at"]
+
+    # Events published by this entity
+    events:
+      - event_name: "example_entity.created"
+        description: "Fired when a new entity is created"
+        payload_schema:
+          type: "object"
+          properties:
+            id: { type: "string" }
+            name: { type: "string" }
+            status: { type: "string" }
+        interested_apps:
+          - "app-that-cares"
+        delivery_guarantee: "at_least_once"
+
+      - event_name: "example_entity.status_changed"
+        description: "Fired when entity status changes"
+        payload_schema:
+          type: "object"
+          properties:
+            id: { type: "string" }
+            old_status: { type: "string" }
+            new_status: { type: "string" }
+            timestamp: { type: "string", format: "date-time" }
+        interested_apps:
+          - "app-that-cares"
+        delivery_guarantee: "exactly_once"
+
+# =====================================================
+# Dependencies
+# =====================================================
+dependencies:
+  required_apps:
+    - app_name: "core-app"
+      min_version: "1.0.0"
+      max_version: "2.0.0"
+      reason: "Requires core functionality"
+
+  optional_apps:
+    - app_name: "analytics-app"
+      min_version: "1.0.0"
+      reason: "Can provide enhanced analytics if available"
+
+# =====================================================
+# Data Synchronization
+# =====================================================
+data_sync:
+  sync_strategy: "event_driven"  # event_driven | polling | push | pull
+  sync_frequency: "real_time"    # real_time | hourly | daily | on_demand
+  conflict_resolution: "source_wins"  # source_wins | target_wins | latest_wins | manual
+
+  # What we send to the Hub
+  entities_synced_to_hub:
+    - entity: "ExampleEntity"
+      sync_mode: "full"  # full | summary | incremental
+      sync_triggers: ["create", "update", "delete"]
+
+    - entity: "AnotherEntity"
+      sync_mode: "summary"
+      fields_synced: ["id", "status", "updated_at"]
+      sync_triggers: ["status_change"]
+
+  # What we consume from the Hub
+  entities_consumed_from_hub:
+    - entity: "SharedEntity"
+      source_app: "other-app"
+      consumed_fields: ["id", "name", "code"]
+      usage: "Display reference data in UI"
+
+# =====================================================
+# API Configuration
+# =====================================================
+api_endpoints:
+  base_url: "https://your-app.company.com"
+  health_check: "/health"
+  communication_sheet: "/api/communication-sheet"
+
+# =====================================================
+# Rate Limits
+# =====================================================
+rate_limits:
+  requests_per_minute: 1000
+  requests_per_hour: 50000
+  burst_limit: 100
+
+# =====================================================
+# Versioning Policy
+# =====================================================
+versioning:
+  strategy: "additive_only"  # additive_only | breaking_allowed
+  breaking_changes_policy: "New major version required for breaking changes"
+  deprecation_notice_period: "90 days"

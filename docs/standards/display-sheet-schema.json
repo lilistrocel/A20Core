@@ -1,0 +1,549 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://a20core.com/schemas/display-sheet/v1.0",
+  "title": "Display Sheet Schema",
+  "description": "Meta-schema for micro-app display and UI integration",
+  "type": "object",
+  "required": ["app_metadata", "display_config"],
+  "properties": {
+    "app_metadata": {
+      "type": "object",
+      "required": ["app_id", "app_name", "version", "display_sheet_version"],
+      "properties": {
+        "app_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Must match Communication Sheet app_id"
+        },
+        "app_name": {
+          "type": "string",
+          "description": "Human-readable application name"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Display sheet version"
+        },
+        "display_sheet_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+$",
+          "description": "Version of display sheet format"
+        }
+      }
+    },
+    "display_config": {
+      "type": "object",
+      "required": ["theme", "widgets"],
+      "properties": {
+        "theme": {
+          "$ref": "#/definitions/theme_config"
+        },
+        "layout": {
+          "$ref": "#/definitions/layout_config"
+        },
+        "widgets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/widget"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/action"
+          }
+        }
+      }
+    },
+    "interactions": {
+      "type": "object",
+      "properties": {
+        "forms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/form"
+          }
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/command"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "theme_config": {
+      "type": "object",
+      "properties": {
+        "primary_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Primary brand color"
+        },
+        "secondary_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon identifier or URL"
+        },
+        "icon_type": {
+          "type": "string",
+          "enum": ["url", "material", "fontawesome", "custom"]
+        }
+      }
+    },
+    "layout_config": {
+      "type": "object",
+      "properties": {
+        "default_grid_columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12,
+          "default": 12
+        },
+        "default_widget_size": {
+          "type": "string",
+          "enum": ["small", "medium", "large", "full"],
+          "default": "medium"
+        }
+      }
+    },
+    "widget": {
+      "type": "object",
+      "required": ["widget_id", "widget_type", "title", "data_source"],
+      "properties": {
+        "widget_id": {
+          "type": "string",
+          "description": "Unique widget identifier"
+        },
+        "widget_type": {
+          "type": "string",
+          "enum": [
+            "card",
+            "table",
+            "chart",
+            "form",
+            "custom",
+            "stat",
+            "list",
+            "timeline",
+            "kanban"
+          ],
+          "description": "Type of widget to render"
+        },
+        "title": {
+          "type": "string",
+          "description": "Widget display title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Widget description"
+        },
+        "size": {
+          "type": "object",
+          "properties": {
+            "columns": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "rows": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "y": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "data_source": {
+          "$ref": "#/definitions/data_source"
+        },
+        "rendering": {
+          "$ref": "#/definitions/rendering_config"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required permissions to view widget"
+        },
+        "refresh_interval": {
+          "type": "integer",
+          "description": "Auto-refresh interval in seconds"
+        }
+      }
+    },
+    "data_source": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["api", "event", "static", "computed"]
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "API endpoint for data"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST"],
+          "default": "GET"
+        },
+        "entity_type": {
+          "type": "string",
+          "description": "Entity type from Communication Sheet"
+        },
+        "filters": {
+          "type": "object",
+          "description": "Default filters for data query"
+        },
+        "transform": {
+          "type": "string",
+          "description": "JavaScript transformation function name"
+        },
+        "event_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Event types that update this widget"
+        }
+      }
+    },
+    "rendering_config": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "type": "string",
+          "description": "Custom component name if widget_type is 'custom'"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/field_config"
+          }
+        },
+        "chart_config": {
+          "$ref": "#/definitions/chart_config"
+        },
+        "table_config": {
+          "$ref": "#/definitions/table_config"
+        },
+        "template": {
+          "type": "string",
+          "description": "HTML template for custom rendering"
+        }
+      }
+    },
+    "field_config": {
+      "type": "object",
+      "required": ["field_name", "label"],
+      "properties": {
+        "field_name": {
+          "type": "string",
+          "description": "Field name from entity schema"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["text", "number", "date", "boolean", "status", "tag", "link", "custom"]
+        },
+        "format": {
+          "type": "string",
+          "description": "Display format (e.g., 'currency', 'date', 'percentage')"
+        },
+        "transform": {
+          "type": "string",
+          "description": "Transformation function for display"
+        },
+        "color_map": {
+          "type": "object",
+          "description": "Value-to-color mapping for status/tag fields"
+        },
+        "link_template": {
+          "type": "string",
+          "description": "URL template for link fields"
+        }
+      }
+    },
+    "chart_config": {
+      "type": "object",
+      "required": ["chart_type"],
+      "properties": {
+        "chart_type": {
+          "type": "string",
+          "enum": ["line", "bar", "pie", "doughnut", "area", "scatter"]
+        },
+        "x_axis": {
+          "type": "string",
+          "description": "Field for X axis"
+        },
+        "y_axis": {
+          "type": "string",
+          "description": "Field for Y axis"
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "color": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "table_config": {
+      "type": "object",
+      "properties": {
+        "sortable": {
+          "type": "boolean",
+          "default": true
+        },
+        "filterable": {
+          "type": "boolean",
+          "default": true
+        },
+        "paginate": {
+          "type": "boolean",
+          "default": true
+        },
+        "page_size": {
+          "type": "integer",
+          "default": 10
+        },
+        "row_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/action"
+          }
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["action_id", "label", "type"],
+      "properties": {
+        "action_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["button", "link", "api_call", "form", "custom"]
+        },
+        "icon": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string",
+          "enum": ["primary", "secondary", "success", "danger", "warning"]
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "API endpoint for api_call type"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE"]
+        },
+        "form_id": {
+          "type": "string",
+          "description": "Form to open for form type"
+        },
+        "confirm_message": {
+          "type": "string",
+          "description": "Confirmation message before execution"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "form": {
+      "type": "object",
+      "required": ["form_id", "title", "fields", "submit_endpoint"],
+      "properties": {
+        "form_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/form_field"
+          }
+        },
+        "submit_endpoint": {
+          "type": "string"
+        },
+        "submit_method": {
+          "type": "string",
+          "enum": ["POST", "PUT", "PATCH"],
+          "default": "POST"
+        },
+        "success_message": {
+          "type": "string"
+        },
+        "redirect_after_submit": {
+          "type": "string"
+        }
+      }
+    },
+    "form_field": {
+      "type": "object",
+      "required": ["field_name", "label", "type"],
+      "properties": {
+        "field_name": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "textarea",
+            "number",
+            "email",
+            "password",
+            "select",
+            "multiselect",
+            "checkbox",
+            "radio",
+            "date",
+            "datetime",
+            "file"
+          ]
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "default_value": {
+          "description": "Default field value"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "validation": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "pattern": {
+              "type": "string"
+            },
+            "custom_validator": {
+              "type": "string"
+            }
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {},
+              "label": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Options for select/radio fields"
+        },
+        "options_source": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string"
+            },
+            "value_field": {
+              "type": "string"
+            },
+            "label_field": {
+              "type": "string"
+            }
+          },
+          "description": "Dynamic options from API"
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["command_id", "label", "endpoint"],
+      "properties": {
+        "command_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE"]
+        },
+        "input_schema": {
+          "type": "object",
+          "description": "JSON Schema for command input"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

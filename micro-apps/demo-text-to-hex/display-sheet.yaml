@@ -1,0 +1,132 @@
+# =====================================================
+# Demo Text-to-Hex Converter - Display Sheet
+# Version: 1.0.0
+# =====================================================
+
+app_metadata:
+  app_id: "demo-text-to-hex"
+  app_name: "Text to Hex Converter (Demo)"
+  version: "1.0.0"
+  display_sheet_version: "1.0"
+
+display_config:
+  theme:
+    primary_color: "#8B5CF6"
+    secondary_color: "#10B981"
+    icon: "code"
+    icon_type: "material"
+
+  layout:
+    default_grid_columns: 12
+    default_widget_size: "medium"
+
+  widgets:
+    # Statistics Overview
+    - widget_id: "conversion_stats"
+      widget_type: "stat"
+      title: "Conversion Statistics"
+      description: "Overview of conversion activity"
+      size:
+        columns: 12
+        rows: 1
+      position:
+        x: 0
+        y: 0
+      data_source:
+        type: "api"
+        endpoint: "http://localhost:3002/api/v1/stats"
+        method: "GET"
+      rendering:
+        fields:
+          - field_name: "total_conversions"
+            label: "Total Conversions"
+            type: "number"
+            format: "number"
+          - field_name: "total_characters_converted"
+            label: "Characters Converted"
+            type: "number"
+            format: "number"
+      refresh_interval: 10
+
+    # Text to Hex Converter Widget
+    - widget_id: "hex_converter"
+      widget_type: "custom"
+      title: "Text to Hex Converter"
+      description: "Convert any text to hexadecimal format"
+      size:
+        columns: 6
+        rows: 2
+      position:
+        x: 0
+        y: 1
+      data_source:
+        type: "api"
+        endpoint: "http://localhost:3002/api/v1/convert"
+        method: "POST"
+      rendering:
+        component: "HexConverter"
+
+    # Conversion History
+    - widget_id: "conversion_history"
+      widget_type: "table"
+      title: "Recent Conversions"
+      description: "History of all text-to-hex conversions"
+      size:
+        columns: 6
+        rows: 2
+      position:
+        x: 6
+        y: 1
+      data_source:
+        type: "api"
+        endpoint: "/api/v1/data/Conversion"
+        method: "GET"
+        entity_type: "Conversion"
+        filters:
+          app_id: "demo-text-to-hex"
+      rendering:
+        fields:
+          - field_name: "input"
+            label: "Input"
+            type: "text"
+          - field_name: "output"
+            label: "Hex Output"
+            type: "text"
+          - field_name: "length"
+            label: "Length"
+            type: "number"
+          - field_name: "timestamp"
+            label: "Converted At"
+            type: "date"
+            format: "date"
+        table_config:
+          sortable: true
+          filterable: false
+          paginate: true
+          page_size: 5
+      permissions: ["demo.read"]
+      refresh_interval: 15
+
+  actions:
+    - action_id: "refresh_all"
+      label: "Refresh Data"
+      type: "custom"
+      icon: "refresh"
+      style: "secondary"
+
+interactions:
+  forms: []
+  commands:
+    - command_id: "convert_text"
+      label: "Convert Text to Hex"
+      description: "Convert a text string to hexadecimal format"
+      endpoint: "http://localhost:3002/api/v1/convert"
+      method: "POST"
+      input_schema:
+        type: "object"
+        required: ["input"]
+        properties:
+          input:
+            type: "string"
+            description: "Text to convert"
+      permissions: ["demo.convert"]

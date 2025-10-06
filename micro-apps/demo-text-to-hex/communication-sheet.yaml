@@ -1,0 +1,99 @@
+# =====================================================
+# Demo Text-to-Hex Converter - Communication Sheet
+# Version: 1.0.0
+# =====================================================
+
+app_metadata:
+  app_id: "demo-text-to-hex"
+  app_name: "Text to Hex Converter (Demo)"
+  version: "1.0.0"
+  communication_sheet_version: "1.0"
+  description: "Demo micro-app that converts text strings to hexadecimal format"
+  maintainer: "demo@a20core.com"
+
+entities:
+  - entity_name: "Conversion"
+    description: "A text-to-hex conversion record"
+    version: "1.0"
+
+    schema:
+      type: "object"
+      required: ["conversion_id", "input", "output", "timestamp"]
+      properties:
+        conversion_id:
+          type: "string"
+          description: "Unique conversion identifier"
+          read_only: true
+        input:
+          type: "string"
+          description: "Original text input"
+        output:
+          type: "string"
+          description: "Hexadecimal output"
+          read_only: true
+        timestamp:
+          type: "string"
+          format: "date-time"
+          description: "Conversion timestamp"
+          read_only: true
+        length:
+          type: "integer"
+          description: "Length of input text"
+          read_only: true
+        hex_length:
+          type: "integer"
+          description: "Length of hex output"
+          read_only: true
+
+    operations:
+      create:
+        endpoint: "/api/v1/convert"
+        method: "POST"
+        permissions_required: ["demo.convert"]
+        triggers_events: ["conversion.completed"]
+
+      query:
+        endpoint: "/api/v1/conversions"
+        method: "GET"
+        permissions_required: ["demo.read"]
+        filters:
+          - field: "timestamp"
+            operators: ["gte", "lte"]
+
+    events:
+      - event_name: "conversion.completed"
+        description: "Fired when a text-to-hex conversion is completed"
+        payload_schema:
+          type: "object"
+          properties:
+            conversion_id: { type: "string" }
+            input_length: { type: "integer" }
+            output_length: { type: "integer" }
+
+dependencies:
+  required_apps: []
+  optional_apps: []
+
+data_sync:
+  sync_strategy: "event_driven"
+  sync_frequency: "real_time"
+  conflict_resolution: "source_wins"
+
+  entities_synced_to_hub:
+    - entity: "Conversion"
+      sync_mode: "full"
+      sync_triggers: ["create"]
+
+api_endpoints:
+  base_url: "http://localhost:3002"
+  health_check: "/health"
+  communication_sheet: "/api/communication-sheet"
+
+rate_limits:
+  requests_per_minute: 100
+  burst_limit: 20
+
+versioning:
+  strategy: "additive_only"
+  breaking_changes_policy: "Demo app - will be deleted"
+  deprecation_notice_period: "None - temporary demo"

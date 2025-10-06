@@ -1,0 +1,349 @@
+# =====================================================
+# Production Manager - Communication Sheet
+# Version: 1.0.0
+# =====================================================
+
+app_metadata:
+  app_id: "production-manager-001"
+  app_name: "Production Manager"
+  version: "1.0.0"
+  communication_sheet_version: "1.0"
+  description: "Manages production orders, work orders, and manufacturing processes"
+  maintainer: "production-team@company.com"
+
+# =====================================================
+# Entity Definitions
+# =====================================================
+entities:
+  # Production Order Entity
+  - entity_name: "ProductionOrder"
+    description: "A manufacturing order to produce specific items"
+    version: "1.0"
+
+    schema:
+      type: "object"
+      required: ["order_id", "product_id", "quantity", "status"]
+      properties:
+        order_id:
+          type: "string"
+          description: "Unique production order identifier"
+          read_only: true
+        product_id:
+          type: "string"
+          description: "Reference to product being manufactured"
+          impacts: ["inventory", "materials"]
+        quantity:
+          type: "integer"
+          description: "Number of units to produce"
+          minimum: 1
+        status:
+          type: "string"
+          enum: ["pending", "in_progress", "completed", "cancelled"]
+          description: "Current order status"
+          impacts: ["inventory", "scheduling"]
+        priority:
+          type: "string"
+          enum: ["low", "normal", "high", "urgent"]
+          description: "Order priority level"
+        scheduled_start:
+          type: "string"
+          format: "date-time"
+          description: "Planned start date/time"
+        scheduled_end:
+          type: "string"
+          format: "date-time"
+          description: "Planned completion date/time"
+        actual_start:
+          type: "string"
+          format: "date-time"
+          read_only: true
+          description: "Actual start date/time"
+        actual_end:
+          type: "string"
+          format: "date-time"
+          read_only: true
+          description: "Actual completion date/time"
+        cost_estimate:
+          type: "number"
+          description: "Estimated production cost"
+          read_only: true
+        materials_required:
+          type: "array"
+          description: "List of materials needed"
+          items:
+            type: "object"
+            properties:
+              material_id:
+                type: "string"
+              quantity:
+                type: "number"
+              unit:
+                type: "string"
+        created_at:
+          type: "string"
+          format: "date-time"
+          read_only: true
+        updated_at:
+          type: "string"
+          format: "date-time"
+          read_only: true
+
+    field_behaviors:
+      product_id:
+        read_only: false
+        impacts:
+          - entity: "Inventory"
+            app: "inventory-manager"
+            description: "Changes trigger inventory reservation"
+          - entity: "MaterialRequirement"
+            app: "production-manager"
+            description: "Recalculates materials needed"
+
+      status:
+        read_only: false
+        impacts:
+          - entity: "Inventory"
+            app: "inventory-manager"
+            description: "Status 'completed' triggers inventory addition"
+          - entity: "WorkOrder"
+            app: "production-manager"
+            description: "Status changes cascade to work orders"
+        allowed_transitions:
+          pending: ["in_progress", "cancelled"]
+          in_progress: ["completed", "cancelled"]
+          completed: []
+          cancelled: []
+
+      cost_estimate:
+        read_only: true
+        calculated_by: "production-manager"
+        calculation_description: "Sum of material costs + labor costs + overhead"
+        refresh_trigger: ["materials_required", "labor_hours"]
+
+    operations:
+      create:
+        endpoint: "/api/v1/production-orders"
+        method: "POST"
+        permissions_required: ["production.create"]
+        triggers_events: ["production_order.created"]
+
+      update:
+        endpoint: "/api/v1/production-orders/{order_id}"
+        method: "PUT"
+        permissions_required: ["production.update"]
+        triggers_events: ["production_order.updated"]
+        validation:
+          - "Cannot update completed orders"
+          - "Status transitions must follow allowed_transitions"
+
+      delete:
+        endpoint: "/api/v1/production-orders/{order_id}"
+        method: "DELETE"
+        permissions_required: ["production.delete"]
+        soft_delete: true
+        triggers_events: ["production_order.deleted"]
+
+      query:
+        endpoint: "/api/v1/production-orders"
+        method: "GET"
+        permissions_required: ["production.read"]
+        filters:
+          - field: "status"
+            operators: ["eq", "in"]
+          - field: "priority"
+            operators: ["eq", "in"]
+          - field: "scheduled_start"
+            operators: ["gte", "lte", "between"]
+          - field: "product_id"
+            operators: ["eq"]
+        pagination:
+          default_limit: 50
+          max_limit: 500
+        sorting:
+          allowed_fields: ["scheduled_start", "priority", "created_at", "status"]
+
+    events:
+      - event_name: "production_order.created"
+        description: "Fired when a new production order is created"
+        payload_schema:
+          type: "object"
+          properties:
+            order_id: { type: "string" }
+            product_id: { type: "string" }
+            quantity: { type: "integer" }
+            scheduled_start: { type: "string", format: "date-time" }
+            priority: { type: "string" }
+        interested_apps:
+          - "inventory-manager"
+          - "planning-manager"
+        delivery_guarantee: "at_least_once"
+
+      - event_name: "production_order.status_changed"
+        description: "Fired when order status changes"
+        payload_schema:
+          type: "object"
+          properties:
+            order_id: { type: "string" }
+            old_status: { type: "string" }
+            new_status: { type: "string" }
+            timestamp: { type: "string", format: "date-time" }
+        interested_apps:
+          - "inventory-manager"
+          - "finance-manager"
+          - "planning-manager"
+        delivery_guarantee: "exactly_once"
+
+      - event_name: "production_order.completed"
+        description: "Fired when production order is completed"
+        payload_schema:
+          type: "object"
+          properties:
+            order_id: { type: "string" }
+            product_id: { type: "string" }
+            quantity_produced: { type: "integer" }
+            actual_cost: { type: "number" }
+            completed_at: { type: "string", format: "date-time" }
+        interested_apps:
+          - "inventory-manager"
+          - "finance-manager"
+        delivery_guarantee: "exactly_once"
+
+  # Work Order Entity
+  - entity_name: "WorkOrder"
+    description: "Individual work tasks within a production order"
+    version: "1.0"
+
+    schema:
+      type: "object"
+      required: ["work_order_id", "production_order_id", "operation", "status"]
+      properties:
+        work_order_id:
+          type: "string"
+          read_only: true
+        production_order_id:
+          type: "string"
+          description: "Parent production order"
+        operation:
+          type: "string"
+          description: "Type of operation (cutting, assembly, etc.)"
+        status:
+          type: "string"
+          enum: ["pending", "in_progress", "completed", "blocked"]
+        assigned_to:
+          type: "string"
+          description: "Worker/team assigned"
+        sequence:
+          type: "integer"
+          description: "Order in production sequence"
+        estimated_duration:
+          type: "integer"
+          description: "Estimated duration in minutes"
+        actual_duration:
+          type: "integer"
+          read_only: true
+          description: "Actual duration in minutes"
+
+    operations:
+      create:
+        endpoint: "/api/v1/work-orders"
+        method: "POST"
+        permissions_required: ["production.create"]
+        triggers_events: ["work_order.created"]
+
+      update:
+        endpoint: "/api/v1/work-orders/{work_order_id}"
+        method: "PUT"
+        permissions_required: ["production.update"]
+        triggers_events: ["work_order.updated"]
+
+      query:
+        endpoint: "/api/v1/work-orders"
+        method: "GET"
+        permissions_required: ["production.read"]
+        filters:
+          - field: "production_order_id"
+            operators: ["eq"]
+          - field: "status"
+            operators: ["eq", "in"]
+          - field: "assigned_to"
+            operators: ["eq"]
+
+    events:
+      - event_name: "work_order.completed"
+        description: "Fired when a work order is completed"
+        payload_schema:
+          type: "object"
+          properties:
+            work_order_id: { type: "string" }
+            production_order_id: { type: "string" }
+            actual_duration: { type: "integer" }
+
+# =====================================================
+# Dependencies
+# =====================================================
+dependencies:
+  required_apps:
+    - app_name: "inventory-manager"
+      min_version: "1.0.0"
+      reason: "Requires inventory data for material availability"
+
+  optional_apps:
+    - app_name: "finance-manager"
+      min_version: "1.0.0"
+      reason: "Can sync cost data for better estimates"
+    - app_name: "planning-manager"
+      min_version: "1.0.0"
+      reason: "Can integrate with production planning"
+
+# =====================================================
+# Data Synchronization
+# =====================================================
+data_sync:
+  sync_strategy: "event_driven"
+  sync_frequency: "real_time"
+  conflict_resolution: "source_wins"
+
+  entities_synced_to_hub:
+    - entity: "ProductionOrder"
+      sync_mode: "full"
+      sync_triggers: ["create", "update", "delete"]
+
+    - entity: "WorkOrder"
+      sync_mode: "summary"
+      fields_synced: ["work_order_id", "production_order_id", "status", "progress_percent"]
+      sync_triggers: ["status_change"]
+
+  entities_consumed_from_hub:
+    - entity: "Product"
+      source_app: "inventory-manager"
+      consumed_fields: ["product_id", "name", "sku", "unit_cost"]
+      usage: "Display product info and calculate production costs"
+
+    - entity: "Material"
+      source_app: "inventory-manager"
+      consumed_fields: ["material_id", "name", "unit_cost", "stock_quantity"]
+      usage: "Check material availability and costs"
+
+# =====================================================
+# API Configuration
+# =====================================================
+api_endpoints:
+  base_url: "https://production-manager.company.com"
+  health_check: "/health"
+  communication_sheet: "/api/communication-sheet"
+
+# =====================================================
+# Rate Limits
+# =====================================================
+rate_limits:
+  requests_per_minute: 1000
+  requests_per_hour: 50000
+  burst_limit: 100
+
+# =====================================================
+# Versioning
+# =====================================================
+versioning:
+  strategy: "additive_only"
+  breaking_changes_policy: "New major version required for breaking changes"
+  deprecation_notice_period: "90 days"

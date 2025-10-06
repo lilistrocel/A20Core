@@ -1,0 +1,379 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+Core Development Philosophy
+KISS (Keep It Simple, Stupid)
+Simplicity should be a key goal in design. Choose straightforward solutions over complex ones whenever possible. Simple solutions are easier to understand, maintain, and debug.
+
+YAGNI (You Aren't Gonna Need It)
+Avoid building functionality on speculation. Implement features only when they are needed, not when you anticipate they might be useful in the future.
+
+Design Principles
+Dependency Inversion: High-level modules should not depend on low-level modules. Both should depend on abstractions.
+Open/Closed Principle: Software entities should be open for extension but closed for modification.
+Single Responsibility: Each function, class, and module should have one clear purpose.
+Fail Fast: Check for potential errors early and raise exceptions immediately when issues occur.
+
+📝 Documentation Standards
+Code Documentation
+Every module should have a docstring explaining its purpose
+Public functions must have complete docstrings
+Complex logic should have inline comments with # Reason: prefix
+Keep README.md updated with setup instructions and examples
+Maintain CHANGELOG.md for version history
+
+⚠️ Important Notes
+NEVER ASSUME OR GUESS - When in doubt, ask for clarification
+Always verify file paths and module names before use
+Keep CLAUDE.md updated when adding new patterns or dependencies
+Test your code - No feature is complete without tests
+Document your decisions - Future developers (including yourself) will thank you
+
+📚 Documentation-First Development
+BEFORE starting any significant feature or modification:
+1. **Read** `docs/architecture/SYSTEM_OVERVIEW.md` to understand the overall architecture
+2. **Check** `IMPLEMENTATION_STATUS.md` for current progress and what's already implemented
+3. **Review** existing code patterns in similar features
+4. **Plan** your approach based on documented architecture principles
+
+AFTER completing code changes:
+1. **Update** `IMPLEMENTATION_STATUS.md` with completed tasks and new status
+2. **Update** `docs/architecture/SYSTEM_OVERVIEW.md` if architecture changed
+3. **Update** `CLAUDE.md` if new patterns or conventions were established
+4. **Update** relevant API documentation in comments
+5. **Mark todos as complete** in tracking systems
+
+## Project Overview
+
+A20 Core is a **microservices hub architecture** with a central Hub that acts as an API gateway, event orchestrator, and data aggregator for independent micro-apps. The system uses PostgreSQL with JSONB for flexible, schema-less data storage while maintaining structured core infrastructure.
+
+**Key Architecture Pattern**: Micro-apps register themselves via "Communication Sheets" (YAML/JSON contracts), sync their data to the Hub's JSONB store, and communicate via events. The Hub validates data against registered schemas and routes events to subscribers.
+
+## Essential Commands
+
+### Docker (Recommended)
+```bash
+# Quick start - production
+cp .env.docker .env      # Copy and customize environment
+docker-compose up -d     # Start all services (Hub + PostgreSQL)
+docker-compose ps        # Check service health
+docker-compose logs -f   # View logs
+
+# Development mode (hot reload)
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Management
+docker-compose restart hub           # Restart Hub service
+docker-compose exec hub sh           # Shell into Hub container
+docker-compose exec postgres psql -U postgres -d a20core_hub
+docker-compose down                  # Stop (keeps data)
+docker-compose down -v               # Stop and delete volumes (DESTRUCTIVE)
+
+# See DOCKER.md for complete Docker guide
+```
+
+### Local Development (Without Docker)
+```bash
+npm install              # Install dependencies
+npm run dev              # Start Hub with auto-reload (nodemon)
+npm start                # Production server
+```
+
+### Database (Local Only)
+```bash
+# Manual database setup (run once)
+createdb a20core_hub
+psql -d a20core_hub -f database/schemas/01_core_tables.sql
+psql -d a20core_hub -f database/schemas/02_flexible_data_storage.sql
+
+# Or use npm script (if DB exists)
+npm run db:init
+```
+
+### Testing & Quality
+```bash
+npm test                 # Run all tests with coverage
+npm run test:watch       # Watch mode for TDD
+npm run lint             # Check code style
+npm run lint:fix         # Auto-fix linting issues
+npm run format           # Format with Prettier
+```
+
+## Architecture Deep Dive
+
+### Core Data Flow Pattern
+
+**Write Path**: Micro-App → Hub API → Schema Validation (against Communication Sheet) → JSONB storage (`app_data` table) → Event published → Webhook delivery to subscribers
+
+**Read Path**: Query → Hub API → JSONB queries on `app_data` table → Relationship joins via `data_relationships` → Response
+
+### Critical Architecture Components
+
+#### 1. Three-Layer Model System
+Each domain model (`AppRegistry`, `DataStore`, `EventManager`) is:
+- Instantiated in `hub/server.js` with the shared `Pool` instance
+- Injected into routes via `initializeRoutes(deps)`
+- All database operations go through these models (never raw queries in routes)
+
+**Pattern to maintain**: Models own all business logic and DB access. Routes are thin controllers.
+
+#### 2. Dual Authentication System
+- **JWT Bearer tokens** (`Authorization: Bearer {token}`) for users - validated via `authMiddleware.authenticateUser`
+- **API Keys** (`Authorization: ApiKey {key}`) for micro-apps - validated via `authMiddleware.authenticateApp`
+- Middleware attaches `req.user` (for JWT) or `req.app` (for API key) to requests
+- Routes use these for authorization and audit trails
+
+**Pattern**: App-to-Hub operations require API key. User operations require JWT. Some routes accept both via `authMiddleware.authenticate`.
+
+#### 3. Communication Sheet as Contract
+Communication Sheets (see `docs/standards/communication-sheet-template.yaml`) define:
+- Entity schemas (JSON Schema format)
+- Field behaviors (read-only, calculated, state transitions)
+- API operations and permissions
+- Events published/consumed
+- Cross-app dependencies
+
+**Critical**: When registering apps (`POST /api/v1/apps/register`), the Communication Sheet is validated against `docs/standards/communication-sheet-schema.json` using AJV, then stored in `communication_sheets` table. Schema versions in the sheet must match what's stored in `schema_versions` table.
+
+#### 4. JSONB Storage Strategy
+The `app_data` table stores ALL micro-app data:
+```sql
+CREATE TABLE app_data (
+    data_id UUID PRIMARY KEY,
+    app_id UUID,           -- Which micro-app owns this
+    entity_type VARCHAR,   -- e.g., "ProductionOrder"
+    entity_id VARCHAR,     -- App's internal ID
+    schema_version VARCHAR,
+    data JSONB,            -- Actual entity data
+    ...
+)
+```
+
+**Querying pattern**:
+- Filter by `app_id` + `entity_type` for single app queries
+- Use `data->>'field_name'` for JSONB field access
+- Use GIN indexes for JSONB queries
+- Join on `data_relationships` for cross-app queries
+
+#### 5. Event System Architecture
+Events flow through three tables:
+1. `event_queue` - Persistent queue (status: pending → processing → completed/failed)
+2. `event_subscriptions` - Apps subscribe to event types with optional filters
+3. `event_delivery_log` - Delivery attempts and status
+
+**Background job** in `server.js` polls `event_queue` every 5 seconds for pending events, matches subscriptions, delivers via webhooks. Retry logic increments `retry_count` up to `max_retries`.
+
+#### 6. Audit Trail Pattern
+All mutating operations pass through `auditMiddleware.log` which:
+- Captures request/response in `res.json` wrapper
+- Logs to `audit_log` table with before/after states
+- Tracks app_id, user_id, IP, user agent, duration
+- Never blocks the response (async logging)
+
+### Database Schema Organization
+
+**Fixed Schema** (`01_core_tables.sql`):
+- `apps`, `users`, `roles`, `permissions` - Registry and auth
+- `api_credentials` - API key hashes (SHA-256)
+- `schema_versions` - Schema registry for entity evolution
+- `audit_log` - Audit trail (partition by month in production)
+- `event_queue`, `event_subscriptions`, `event_deployment_log` - Event system
+- `communication_sheets` - App contracts with SHA-256 checksums
+
+**Flexible Schema** (`02_flexible_data_storage.sql`):
+- `app_data` - All micro-app data (JSONB)
+- `data_relationships` - Cross-app references
+- `data_sync_status` - Sync tracking
+- `data_validation_errors` - Schema violations
+- Materialized views (`mv_app_data_stats`, `mv_relationship_stats`) - Refreshed every 5 minutes
+
+### Configuration & Environment
+
+Environment variables (see `config/.env.example` for local, `.env.docker` for Docker):
+```bash
+# Database - REQUIRED
+DB_HOST=postgres        # Use 'postgres' in Docker, 'localhost' for local
+DB_PORT=5432
+DB_NAME=a20core_hub
+DB_USER=postgres
+DB_PASSWORD=postgres    # CHANGE IN PRODUCTION
+
+# Auth - Change in production
+JWT_SECRET              # Used for signing JWT tokens (64-char hex recommended)
+
+# Intervals (milliseconds)
+EVENT_PROCESSING_INTERVAL=5000
+MATERIALIZED_VIEW_REFRESH=300000
+```
+
+**Docker-specific notes**:
+- Use service names for DB_HOST (e.g., `postgres`, not `localhost`)
+- Copy `.env.docker` to `.env` and customize for your environment
+- Generate secure JWT_SECRET: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+- See `DOCKER.md` for complete environment configuration
+
+## Standards & Conventions
+
+### API Standards (Enforced)
+- **Versioning**: `/api/v1/resource` (URL-based)
+- **Response format**: `{ success: bool, data: {}, metadata: {} }`
+- **Error format**: `{ success: false, error: { code, message, details } }`
+- **Field naming**: `snake_case` in JSON (`created_at`, not `createdAt`)
+- **Resource naming**: plural kebab-case (`/production-orders`, not `/ProductionOrder`)
+- See `docs/standards/API_STANDARDS.md` for complete conventions
+
+### Data Standards (Enforced)
+- **Dates**: ISO 8601 UTC (`2024-01-01T12:00:00.000Z`)
+- **IDs**: UUID v4
+- **Soft delete**: `is_deleted=true` + `deleted_at` timestamp
+- **Audit fields**: Every entity needs `created_at`, `updated_at`, `created_by`, `updated_by`
+- **Enums**: lowercase snake_case (`pending`, `in_progress`, `completed`)
+- See `docs/standards/DATA_STANDARDS.md` for complete types
+
+### Schema Evolution Rules
+1. **Additive only** - Can add optional fields, cannot remove/rename
+2. **Version bump** - New schema version for any change
+3. **Backward compatible** - Old versions continue working
+4. **Deprecation period** - 90 days minimum before removing support
+
+## Working with Micro-Apps
+
+### Creating a New Micro-App
+
+1. Copy `docs/standards/communication-sheet-template.yaml`
+2. Define entities with JSON Schema
+3. Specify operations (create, update, delete, query)
+4. List events published/consumed
+5. Register via `POST /api/v1/apps/register` with admin token
+6. Receive API key in response
+7. Use API key for all Hub interactions
+
+### Integrating with Hub
+
+Micro-apps interact with Hub via:
+- **Data sync**: `POST /api/v1/data` to upsert data
+- **Event publishing**: `POST /api/v1/events` when state changes
+- **Event subscription**: `POST /api/v1/events/subscribe` with webhook URL
+- **Data queries**: `GET /api/v1/data/:entityType` to read other apps' data
+
+**Example**: Production Manager creates order → POSTs to `/api/v1/data` → Hub stores in `app_data` → Hub publishes `production_order.created` event → Inventory Manager receives webhook → Inventory Manager reserves materials
+
+## Critical Files Reference
+
+### Application Code
+- `hub/server.js` - Main entry, dependency injection, background jobs
+- `hub/src/api/routes.js` - All API endpoints, route definitions
+- `hub/src/models/` - Business logic layer (AppRegistry, DataStore, EventManager)
+- `hub/src/middleware/auth.js` - Dual authentication (JWT + API key)
+- `hub/src/middleware/audit.js` - Audit logging wrapper
+- `database/schemas/` - PostgreSQL schema definitions
+- `docs/standards/communication-sheet-schema.json` - Contract validator
+
+### Docker Infrastructure
+- `Dockerfile` - Hub service container (multi-stage build)
+- `database/Dockerfile` - PostgreSQL with auto-schema initialization
+- `docker-compose.yml` - Production orchestration (Hub + PostgreSQL + pgAdmin)
+- `docker-compose.dev.yml` - Development overrides (hot reload, debug port)
+- `.env.docker` - Environment template for Docker
+- `.dockerignore` - Build context optimization
+- `DOCKER.md` - Complete Docker setup guide
+
+## When Modifying Core Code
+
+### Adding New API Endpoints
+1. Add route in `hub/src/api/routes.js` in appropriate section
+2. Use existing middleware: `authMiddleware.authenticate`, `auditMiddleware.log`
+3. Call model methods (AppRegistry, DataStore, EventManager)
+4. Return standard response format: `{ success, data }`
+5. Update this file if adding new domain concepts
+
+### Adding Database Tables
+1. Add to appropriate schema file (`01_core_tables.sql` or `02_flexible_data_storage.sql`)
+2. Include indexes for foreign keys and common queries
+3. Add `updated_at` trigger if table has mutable data
+4. Add COMMENT for documentation
+
+### Schema Validation Changes
+Communication Sheet validation is in `AppRegistry.validateCommunicationSheet()` using AJV. To modify accepted schema:
+1. Update `docs/standards/communication-sheet-schema.json`
+2. Bump `communication_sheet_version`
+3. Support old versions during deprecation period
+
+## Database Connection Pattern
+
+All database access uses the shared connection pool from `server.js`:
+```javascript
+const pool = new Pool({ /* config */ });
+const model = new ModelClass(pool);
+await pool.query('SELECT ...', [params]);
+```
+
+**Never** create new Pool instances in models/routes. Always use the injected pool.
+
+## Docker Development Patterns
+
+### When to Use Docker
+- **Always use Docker** for full-stack development (Hub + PostgreSQL + micro-apps)
+- **Use local Node.js** only for quick Hub-only changes without DB access
+- **Use Docker Compose** for integration testing with all services
+
+### Adding Micro-Apps to Docker
+When creating a new micro-app:
+1. Create `micro-apps/{app-name}/Dockerfile`
+2. Add service to `docker-compose.yml` with Hub dependency
+3. Set `HUB_URL=http://hub:3000` (use service name, not localhost)
+4. Add API key to `.env` and reference in compose file
+5. Connect to `a20core-network` for inter-service communication
+
+### Docker Development Workflow
+```bash
+# 1. Start services in dev mode
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# 2. Make code changes (hot reload active)
+
+# 3. View logs
+docker-compose logs -f hub
+
+# 4. Access database
+docker-compose exec postgres psql -U postgres -d a20core_hub
+
+# 5. Rebuild after dependency changes
+docker-compose build hub && docker-compose up -d hub
+```
+
+### Docker Debugging
+- **Attach debugger**: Connect to `localhost:9229` (dev mode only)
+- **Shell access**: `docker-compose exec hub sh`
+- **Database queries**: `docker-compose exec postgres psql -U postgres -d a20core_hub`
+- **Network inspection**: `docker network inspect a20core-network`
+- **Health checks**: `docker-compose ps` shows service health
+
+### Environment Variables in Docker
+- **Container-to-container**: Use service names (`DB_HOST=postgres`)
+- **Host-to-container**: Use `localhost` with port mapping
+- **Never hardcode**: Always use environment variables from `.env`
+- **Secrets in production**: Use Docker Secrets or external vault
+
+## Testing Strategy (To Be Implemented)
+
+Tests should cover:
+- **Unit tests**: Model methods with mocked DB
+- **Integration tests**: API endpoints with test database
+- **Schema validation**: Communication Sheet validation
+- **Event delivery**: Event queue processing and webhook delivery
+
+Use `supertest` for API testing, `jest` for test runner.
+
+### Testing with Docker
+```bash
+# Run tests in container
+docker-compose exec hub npm test
+
+# Run tests with coverage
+docker-compose exec hub npm run test:coverage
+
+# Watch mode
+docker-compose exec hub npm run test:watch
+```

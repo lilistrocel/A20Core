@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    container_name: a20core-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-a20core_hub}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD:-scram-sha-256}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      # Persistent data
+      - postgres_data:/var/lib/postgresql/data
+      # Custom initialization scripts (run after schemas)
+      - ./database/init-scripts:/docker-entrypoint-initdb.d/init-scripts:ro
+    networks:
+      - a20core-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-a20core_hub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # A20 Hub Service
+  hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: a20core-hub
+    restart: unless-stopped
+    environment:
+      # Database connection
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-a20core_hub}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+
+      # Application config
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      JWT_SECRET: ${JWT_SECRET:-change-this-in-production}
+
+      # Event processing intervals (milliseconds)
+      EVENT_PROCESSING_INTERVAL: ${EVENT_PROCESSING_INTERVAL:-5000}
+      MATERIALIZED_VIEW_REFRESH: ${MATERIALIZED_VIEW_REFRESH:-300000}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      # Mount logs directory for persistence
+      - hub_logs:/app/logs
+    networks:
+      - a20core-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); });"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Dashboard - React Frontend
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: a20core-dashboard
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    ports:
+      - "${DASHBOARD_PORT:-8080}:80"
+    networks:
+      - a20core-network
+    depends_on:
+      hub:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # Demo Text-to-Hex Micro-App
+  demo-text-to-hex:
+    build:
+      context: ./micro-apps/demo-text-to-hex
+      dockerfile: Dockerfile
+    container_name: a20core-demo-text-to-hex
+    restart: unless-stopped
+    environment:
+      HUB_URL: http://hub:3000
+      PORT: 3002
+      NODE_ENV: ${NODE_ENV:-production}
+    ports:
+      - "3002:3002"
+    networks:
+      - a20core-network
+    depends_on:
+      hub:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); });"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # pgAdmin - Database Management UI (Optional - comment out if not needed)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: a20core-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@a20core.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - a20core-network
+    depends_on:
+      - postgres
+
+networks:
+  a20core-network:
+    driver: bridge
+    name: a20core-network
+
+volumes:
+  postgres_data:
+    name: a20core-postgres-data
+  hub_logs:
+    name: a20core-hub-logs
+  pgadmin_data:
+    name: a20core-pgadmin-data

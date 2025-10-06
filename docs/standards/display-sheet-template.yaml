@@ -1,0 +1,280 @@
+# =====================================================
+# Display Sheet Template
+# Version: 1.0
+# Copy this template for each micro-app's UI definition
+# =====================================================
+
+app_metadata:
+  app_id: "your-app-id"  # Must match Communication Sheet
+  app_name: "Your App Name"
+  version: "1.0.0"
+  display_sheet_version: "1.0"
+
+# =====================================================
+# Display Configuration
+# =====================================================
+display_config:
+  # Theme settings
+  theme:
+    primary_color: "#3B82F6"    # Primary brand color
+    secondary_color: "#10B981"   # Secondary color
+    icon: "dashboard"            # Material icon name
+    icon_type: "material"        # material | fontawesome | url | custom
+
+  # Layout configuration
+  layout:
+    default_grid_columns: 12     # Grid system columns
+    default_widget_size: "medium" # small | medium | large | full
+
+  # Widgets to display
+  widgets:
+    # Example: Statistics Card
+    - widget_id: "stats_overview"
+      widget_type: "stat"
+      title: "Overview Statistics"
+      description: "Key metrics at a glance"
+      size:
+        columns: 4
+        rows: 1
+      position:
+        x: 0
+        y: 0
+      data_source:
+        type: "api"
+        endpoint: "/api/v1/stats/overview"
+        method: "GET"
+        entity_type: "Statistics"
+      rendering:
+        fields:
+          - field_name: "total_count"
+            label: "Total Items"
+            type: "number"
+            format: "number"
+          - field_name: "active_count"
+            label: "Active"
+            type: "number"
+            format: "number"
+      refresh_interval: 30
+
+    # Example: Data Table
+    - widget_id: "items_table"
+      widget_type: "table"
+      title: "Items List"
+      description: "All items in the system"
+      size:
+        columns: 12
+        rows: 2
+      position:
+        x: 0
+        y: 1
+      data_source:
+        type: "api"
+        endpoint: "/api/v1/data/YourEntity"
+        method: "GET"
+        entity_type: "YourEntity"
+        filters:
+          is_deleted: false
+      rendering:
+        fields:
+          - field_name: "id"
+            label: "ID"
+            type: "text"
+          - field_name: "name"
+            label: "Name"
+            type: "text"
+          - field_name: "status"
+            label: "Status"
+            type: "status"
+            color_map:
+              active: "#10B981"
+              pending: "#F59E0B"
+              inactive: "#6B7280"
+          - field_name: "created_at"
+            label: "Created"
+            type: "date"
+            format: "date"
+        table_config:
+          sortable: true
+          filterable: true
+          paginate: true
+          page_size: 10
+          row_actions:
+            - action_id: "view_item"
+              label: "View"
+              type: "link"
+              icon: "visibility"
+              style: "primary"
+            - action_id: "edit_item"
+              label: "Edit"
+              type: "form"
+              icon: "edit"
+              style: "secondary"
+              form_id: "edit_item_form"
+              permissions: ["app.update"]
+            - action_id: "delete_item"
+              label: "Delete"
+              type: "api_call"
+              icon: "delete"
+              style: "danger"
+              endpoint: "/api/v1/data/YourEntity/{id}"
+              method: "DELETE"
+              confirm_message: "Are you sure you want to delete this item?"
+              permissions: ["app.delete"]
+      permissions: ["app.read"]
+
+    # Example: Chart
+    - widget_id: "activity_chart"
+      widget_type: "chart"
+      title: "Activity Over Time"
+      size:
+        columns: 6
+        rows: 2
+      position:
+        x: 0
+        y: 3
+      data_source:
+        type: "api"
+        endpoint: "/api/v1/stats/activity"
+        method: "GET"
+      rendering:
+        chart_config:
+          chart_type: "line"
+          x_axis: "date"
+          series:
+            - field: "count"
+              label: "Activity Count"
+              color: "#3B82F6"
+
+    # Example: Custom Widget
+    - widget_id: "custom_widget"
+      widget_type: "custom"
+      title: "Custom Functionality"
+      description: "App-specific custom widget"
+      size:
+        columns: 6
+        rows: 2
+      position:
+        x: 6
+        y: 3
+      data_source:
+        type: "api"
+        endpoint: "/api/v1/custom/data"
+        method: "POST"
+      rendering:
+        component: "CustomComponent"  # Custom React component name
+        template: |
+          <div class="custom-widget">
+            <input type="text" id="input" placeholder="Enter value" />
+            <button onclick="processInput()">Process</button>
+            <div id="output"></div>
+          </div>
+
+  # Global actions (toolbar buttons)
+  actions:
+    - action_id: "create_new"
+      label: "Create New Item"
+      type: "form"
+      icon: "add"
+      style: "primary"
+      form_id: "create_item_form"
+      permissions: ["app.create"]
+
+    - action_id: "refresh_data"
+      label: "Refresh"
+      type: "custom"
+      icon: "refresh"
+      style: "secondary"
+
+# =====================================================
+# Interactions
+# =====================================================
+interactions:
+  # Forms
+  forms:
+    - form_id: "create_item_form"
+      title: "Create New Item"
+      description: "Fill in the details to create a new item"
+      fields:
+        - field_name: "name"
+          label: "Name"
+          type: "text"
+          placeholder: "Enter name"
+          required: true
+          validation:
+            min: 3
+            max: 100
+
+        - field_name: "description"
+          label: "Description"
+          type: "textarea"
+          placeholder: "Enter description"
+          required: false
+
+        - field_name: "status"
+          label: "Status"
+          type: "select"
+          required: true
+          default_value: "pending"
+          options:
+            - value: "pending"
+              label: "Pending"
+            - value: "active"
+              label: "Active"
+            - value: "inactive"
+              label: "Inactive"
+
+        - field_name: "priority"
+          label: "Priority"
+          type: "select"
+          required: true
+          default_value: "normal"
+          options:
+            - value: "low"
+              label: "Low"
+            - value: "normal"
+              label: "Normal"
+            - value: "high"
+              label: "High"
+
+      submit_endpoint: "/api/v1/data"
+      submit_method: "POST"
+      success_message: "Item created successfully!"
+      redirect_after_submit: "/dashboard"
+
+    - form_id: "edit_item_form"
+      title: "Edit Item"
+      description: "Update item details"
+      fields:
+        - field_name: "name"
+          label: "Name"
+          type: "text"
+          required: true
+        - field_name: "status"
+          label: "Status"
+          type: "select"
+          required: true
+          options:
+            - value: "pending"
+              label: "Pending"
+            - value: "active"
+              label: "Active"
+            - value: "inactive"
+              label: "Inactive"
+      submit_endpoint: "/api/v1/data/YourEntity/{id}"
+      submit_method: "PUT"
+      success_message: "Item updated successfully!"
+
+  # Commands (API calls)
+  commands:
+    - command_id: "sync_data"
+      label: "Sync Data"
+      description: "Synchronize data with external source"
+      endpoint: "/api/v1/sync"
+      method: "POST"
+      input_schema:
+        type: "object"
+        properties:
+          sync_type:
+            type: "string"
+            enum: ["full", "incremental"]
+      permissions: ["app.admin"]

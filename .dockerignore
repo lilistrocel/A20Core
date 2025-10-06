@@ -1,0 +1,48 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+config/.env
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage
+*.log
+
+# Documentation (most not needed in container)
+# Keep docs/standards for communication sheet schema
+docs/*
+!docs/standards
+*.md
+!README.md
+
+# Development files
+.cursor
+.claude
+
+# Build artifacts
+dist
+build
+
+# Temporary files
+tmp
+temp
+*.tmp
