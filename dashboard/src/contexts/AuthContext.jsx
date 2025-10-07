@@ -35,11 +35,17 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password, organizationName = null) => {
     try {
-      const response = await apiClient.post('/auth/login', {
+      const payload = {
         username,
         password,
-        organization: organizationName,
-      });
+      };
+
+      // Only include organization if provided
+      if (organizationName) {
+        payload.organization = organizationName;
+      }
+
+      const response = await apiClient.post('/auth/login', payload);
 
       const { user, token, organization, organizations } = response.data.data;
 
@@ -49,7 +55,7 @@ export function AuthProvider({ children }) {
       setOrganization(organization);
       setOrganizations(organizations);
 
-      return { success: true };
+      return { success: true, data: { organization, organizations } };
     } catch (error) {
       return {
         success: false,

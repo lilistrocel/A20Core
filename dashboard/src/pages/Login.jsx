@@ -9,7 +9,6 @@ export default function Login() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    organization: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,11 +26,14 @@ export default function Login() {
     setError('');
     setLoading(true);
 
-    const result = await login(
-      formData.username,
-      formData.password,
-      formData.organization || null
-    );
+    // Validate required fields
+    if (!formData.username || !formData.password) {
+      setError('Username and password are required');
+      setLoading(false);
+      return;
+    }
+
+    const result = await login(formData.username, formData.password);
 
     if (result.success) {
       navigate('/');
@@ -86,21 +88,6 @@ export default function Login() {
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter your password"
-              />
-            </div>
-
-            {/* Organization (Optional) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Organization <span className="text-gray-400">(optional)</span>
-              </label>
-              <input
-                type="text"
-                name="organization"
-                value={formData.organization}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Leave empty for default organization"
               />
             </div>
 

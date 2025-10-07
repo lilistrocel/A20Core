@@ -12,7 +12,8 @@
       "Bash(docker-compose:*)",
       "Bash(curl:*)",
       "Bash(python:*)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "Bash(timeout 30 docker-compose logs -f hub)"
     ],
     "deny": [],
     "ask": []

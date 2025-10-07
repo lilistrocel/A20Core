@@ -63,6 +63,13 @@ export default function Register() {
     setSuccess(null);
     setLoading(true);
 
+    // Validate required fields
+    if (!formData.username || !formData.email || !formData.password || !formData.organization) {
+      setError('All fields are required');
+      setLoading(false);
+      return;
+    }
+
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');

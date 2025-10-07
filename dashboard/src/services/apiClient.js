@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  // Use empty baseURL in production so requests go through nginx proxy
-  // In dev mode, VITE_API_BASE_URL should be set to http://localhost:3000
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  // Use /api/v1 in production so requests go through nginx proxy to Hub
+  // In dev mode, VITE_API_BASE_URL should be set to http://localhost:3000/api/v1
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
