@@ -5,6 +5,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import AppView from './pages/AppView';
+import PendingMembers from './pages/PendingMembers';
+import UserManagement from './pages/UserManagement';
+import ForcePasswordChange from './pages/ForcePasswordChange';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -16,6 +19,16 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Force Password Change - Protected but no layout */}
+          <Route
+            path="/force-password-change"
+            element={
+              <ProtectedRoute>
+                <ForcePasswordChange />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected Routes */}
           <Route
@@ -34,6 +47,26 @@ function App() {
               <ProtectedRoute>
                 <DashboardLayout>
                   <AppView />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pending-members"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <PendingMembers />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/user-management"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <UserManagement />
                 </DashboardLayout>
               </ProtectedRoute>
             }

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS organization_members (
     approved_by UUID REFERENCES users(user_id),
     approved_at TIMESTAMP,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     metadata JSONB DEFAULT '{}',
     UNIQUE(org_id, user_id)
 );
@@ -59,6 +60,13 @@ CREATE INDEX idx_org_members_role ON organization_members(role);
 COMMENT ON TABLE organization_members IS 'User membership in organizations with approval workflow';
 COMMENT ON COLUMN organization_members.role IS 'owner: first user, full control; admin: can approve users; member: regular user';
 COMMENT ON COLUMN organization_members.status IS 'pending: awaiting admin approval; active: approved; suspended: temporarily disabled';
+
+-- Trigger to auto-update updated_at on organization_members
+DROP TRIGGER IF EXISTS update_organization_members_updated_at ON organization_members;
+CREATE TRIGGER update_organization_members_updated_at
+    BEFORE UPDATE ON organization_members
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
 -- Organization Apps (Licensed Micro-Apps)

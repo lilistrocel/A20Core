@@ -149,11 +149,15 @@ class AuthManager {
     // Return user without password hash
     delete user.password_hash;
 
+    // Check if user needs to change password
+    const force_password_change = user.metadata?.force_password_change || false;
+
     return {
       user,
       token,
       organization: selectedOrg,
       organizations,
+      force_password_change,
     };
   }
 
@@ -284,6 +288,38 @@ class AuthManager {
     // Update password
     await this.pool.query(
       `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $2`,
+      [newPasswordHash, userId]
+    );
+
+    // Revoke all existing sessions for security
+    await this.pool.query(
+      `UPDATE user_sessions
+       SET is_active = false, revoked_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1 AND is_active = true`,
+      [userId]
+    );
+
+    return true;
+  }
+
+  /**
+   * Force password change (no old password required)
+   * Used when user logs in with temporary password
+   * @param {string} userId - User ID
+   * @param {string} newPassword - New password
+   * @returns {Promise<boolean>} True if password changed
+   */
+  async forcePasswordChange(userId, newPassword) {
+    // Hash new password
+    const newPasswordHash = await hashPassword(newPassword);
+
+    // Update password and remove force_password_change flag
+    await this.pool.query(
+      `UPDATE users
+       SET password_hash = $1,
+           metadata = jsonb_set(COALESCE(metadata, '{}'), '{force_password_change}', 'false'),
+           updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $2`,
       [newPasswordHash, userId]
     );

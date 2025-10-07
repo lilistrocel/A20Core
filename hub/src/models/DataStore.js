@@ -14,7 +14,12 @@ class DataStore {
    * @returns {Promise<Object>} Stored data
    */
   async upsertData(data) {
-    const { app_id, entity_type, entity_id, schema_version, data: payload, metadata = {}, org_id = null } = data;
+    const { app_id, entity_type, entity_id, schema_version, data: payload, metadata = {}, org_id } = data;
+
+    // Enforce organization isolation
+    if (!org_id) {
+      throw new Error('org_id is required for data operations');
+    }
 
     const query = `
       INSERT INTO app_data (app_id, entity_type, entity_id, schema_version, data, metadata, org_id)
@@ -48,27 +53,25 @@ class DataStore {
    * @param {string} appId - App ID
    * @param {string} entityType - Entity type
    * @param {string} entityId - Entity ID
-   * @param {string} orgId - Organization ID (optional, for filtering)
+   * @param {string} orgId - Organization ID (required for isolation)
    * @returns {Promise<Object>} Data object
    */
-  async getData(appId, entityType, entityId, orgId = null) {
-    let query = `
+  async getData(appId, entityType, entityId, orgId) {
+    // Enforce organization isolation
+    if (!orgId) {
+      throw new Error('org_id is required for data operations');
+    }
+
+    const query = `
       SELECT * FROM app_data
       WHERE app_id = $1
         AND entity_type = $2
         AND entity_id = $3
+        AND org_id = $4
         AND is_deleted = false
     `;
 
-    const params = [appId, entityType, entityId];
-
-    // Add organization filter if provided
-    if (orgId) {
-      query += ` AND org_id = $4`;
-      params.push(orgId);
-    }
-
-    const result = await this.db.query(query, params);
+    const result = await this.db.query(query, [appId, entityType, entityId, orgId]);
     return result.rows[0];
   }
 
@@ -86,20 +89,19 @@ class DataStore {
       order = 'DESC',
       limit = 50,
       offset = 0,
-      org_id = null
+      org_id
     } = queryParams;
+
+    // Enforce organization isolation
+    if (!org_id) {
+      throw new Error('org_id is required for data operations');
+    }
 
     let query = `
       SELECT * FROM app_data
-      WHERE app_id = $1 AND entity_type = $2 AND is_deleted = false
+      WHERE app_id = $1 AND entity_type = $2 AND org_id = $3 AND is_deleted = false
     `;
-    const params = [app_id, entity_type];
-
-    // Add organization filter if provided
-    if (org_id) {
-      params.push(org_id);
-      query += ` AND org_id = $${params.length}`;
-    }
+    const params = [app_id, entity_type, org_id];
 
     // Add JSONB filters
     Object.entries(filters).forEach(([field, value]) => {
@@ -120,15 +122,25 @@ class DataStore {
    * @param {string} appId - App ID
    * @param {string} entityType - Entity type
    * @param {string} entityId - Entity ID
+   * @param {string} orgId - Organization ID (required for isolation)
    * @returns {Promise<boolean>} Success status
    */
-  async deleteData(appId, entityType, entityId) {
+  async deleteData(appId, entityType, entityId, orgId) {
+    // Enforce organization isolation
+    if (!orgId) {
+      throw new Error('org_id is required for data operations');
+    }
+
+    // Use direct query instead of function to include org_id check
     const query = `
-      SELECT soft_delete_app_data($1, $2, $3) as success
+      UPDATE app_data
+      SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP
+      WHERE app_id = $1 AND entity_type = $2 AND entity_id = $3 AND org_id = $4
+      RETURNING data_id
     `;
 
-    const result = await this.db.query(query, [appId, entityType, entityId]);
-    return result.rows[0].success;
+    const result = await this.db.query(query, [appId, entityType, entityId, orgId]);
+    return result.rowCount > 0;
   }
 
   /**

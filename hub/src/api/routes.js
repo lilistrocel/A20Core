@@ -211,10 +211,23 @@ function initializeRoutes(deps) {
   // =====================================================
 
   // Store/Update data
-  // TODO: Re-enable authentication in production
-  router.post('/data', async (req, res) => {
+  router.post('/data', authMiddleware.authenticate, auditMiddleware.log, async (req, res) => {
     try {
-      const data = await dataStore.upsertData(req.body);
+      // Inject org_id from authenticated user or app
+      const org_id = req.user?.org_id || req.app?.org_id || req.organization?.org_id;
+
+      if (!org_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Organization context required'
+        });
+      }
+
+      const data = await dataStore.upsertData({
+        ...req.body,
+        org_id
+      });
+
       res.status(201).json({
         success: true,
         data: data
@@ -228,8 +241,7 @@ function initializeRoutes(deps) {
   });
 
   // Get data by ID
-  // TODO: Re-enable authentication in production
-  router.get('/data/:entityType/:entityId', async (req, res) => {
+  router.get('/data/:entityType/:entityId', authMiddleware.authenticate, async (req, res) => {
     try {
       const { entityType, entityId } = req.params;
       const { app_id } = req.query;
@@ -241,7 +253,17 @@ function initializeRoutes(deps) {
         });
       }
 
-      const data = await dataStore.getData(app_id, entityType, entityId);
+      // Inject org_id from authenticated user or app
+      const org_id = req.user?.org_id || req.app?.org_id || req.organization?.org_id;
+
+      if (!org_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Organization context required'
+        });
+      }
+
+      const data = await dataStore.getData(app_id, entityType, entityId, org_id);
       if (!data) {
         return res.status(404).json({
           success: false,
@@ -262,8 +284,7 @@ function initializeRoutes(deps) {
   });
 
   // Query data
-  // TODO: Re-enable authentication in production
-  router.get('/data/:entityType', async (req, res) => {
+  router.get('/data/:entityType', authMiddleware.authenticate, async (req, res) => {
     try {
       const { entityType } = req.params;
       const { app_id, ...filters } = req.query;
@@ -275,9 +296,20 @@ function initializeRoutes(deps) {
         });
       }
 
+      // Inject org_id from authenticated user or app
+      const org_id = req.user?.org_id || req.app?.org_id || req.organization?.org_id;
+
+      if (!org_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Organization context required'
+        });
+      }
+
       const data = await dataStore.queryData({
         app_id,
         entity_type: entityType,
+        org_id,
         filters: filters.filter ? JSON.parse(filters.filter) : {},
         sort: filters.sort || 'updated_at',
         order: filters.order || 'DESC',
@@ -299,10 +331,29 @@ function initializeRoutes(deps) {
   });
 
   // Delete data
-  router.delete('/data/:entityType/:entityId', authMiddleware.authenticateApp, auditMiddleware.log, async (req, res) => {
+  router.delete('/data/:entityType/:entityId', authMiddleware.authenticate, auditMiddleware.log, async (req, res) => {
     try {
       const { entityType, entityId } = req.params;
-      const success = await dataStore.deleteData(req.app.app_id, entityType, entityId);
+      const { app_id } = req.query;
+
+      if (!app_id) {
+        return res.status(400).json({
+          success: false,
+          error: 'app_id query parameter required'
+        });
+      }
+
+      // Inject org_id from authenticated user or app
+      const org_id = req.user?.org_id || req.app?.org_id || req.organization?.org_id;
+
+      if (!org_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Organization context required'
+        });
+      }
+
+      const success = await dataStore.deleteData(app_id, entityType, entityId, org_id);
 
       res.json({
         success: success,

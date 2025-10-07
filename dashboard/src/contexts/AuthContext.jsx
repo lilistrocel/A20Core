@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
 
       const response = await apiClient.post('/auth/login', payload);
 
-      const { user, token, organization, organizations } = response.data.data;
+      const { user, token, organization, organizations, force_password_change } = response.data.data;
 
       localStorage.setItem('authToken', token);
       setToken(token);
@@ -55,7 +55,10 @@ export function AuthProvider({ children }) {
       setOrganization(organization);
       setOrganizations(organizations);
 
-      return { success: true, data: { organization, organizations } };
+      return {
+        success: true,
+        data: { organization, organizations, force_password_change },
+      };
     } catch (error) {
       return {
         success: false,
@@ -80,19 +83,37 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = async () => {
+  const logout = async (newPassword = null) => {
     try {
-      if (token) {
+      // If newPassword is provided, it's a force password change
+      if (newPassword) {
+        const response = await apiClient.post('/auth/force-password-change', {
+          new_password: newPassword,
+        });
+
+        if (!response.data.success) {
+          return {
+            success: false,
+            error: response.data.error || 'Password change failed',
+          };
+        }
+      } else if (token) {
         await apiClient.post('/auth/logout');
       }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
+
       localStorage.removeItem('authToken');
       setToken(null);
       setUser(null);
       setOrganization(null);
       setOrganizations([]);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Logout/Password change error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Operation failed',
+      };
     }
   };
 

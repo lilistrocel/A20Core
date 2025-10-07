@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Home, Box, Settings, LogOut, User, Building2 } from 'lucide-react';
+import { Menu, X, Home, Box, Settings, LogOut, User, Building2, Users } from 'lucide-react';
 import { useAppsStore } from '../../store/appsStore';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { apps } = useAppsStore();
-  const { user, organization, logout } = useAuth();
+  const { user, organization, isOrgAdmin, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -68,6 +68,24 @@ export default function DashboardLayout({ children }) {
           )}
 
           <div className="pt-4 border-t border-gray-200 mt-4">
+            {isOrgAdmin && (
+              <>
+                <Link
+                  to="/user-management"
+                  className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-gray-900"
+                >
+                  <Users className="w-5 h-5" />
+                  <span>User Management</span>
+                </Link>
+                <Link
+                  to="/pending-members"
+                  className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-gray-900"
+                >
+                  <Users className="w-5 h-5" />
+                  <span>Pending Members</span>
+                </Link>
+              </>
+            )}
             <Link
               to="/settings"
               className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-gray-900"

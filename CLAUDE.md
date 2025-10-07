@@ -356,7 +356,39 @@ docker-compose build hub && docker-compose up -d hub
 - **Never hardcode**: Always use environment variables from `.env`
 - **Secrets in production**: Use Docker Secrets or external vault
 
-## Testing Strategy (To Be Implemented)
+## Testing Strategy
+
+### Test Admin Account
+
+**Primary admin account for testing and development:**
+
+```
+Username: admin
+Password: admin123
+Email: admin@a20core.local
+Organization: admin-org
+Role: owner
+```
+
+**Creating the test admin:**
+```bash
+# Run the SQL script to create/recreate test admin
+docker-compose exec -T postgres psql -U postgres -d a20core_hub < database/create-test-admin.sql
+```
+
+**Testing API endpoints:**
+```bash
+# Login to get JWT token
+TOKEN=$(curl -s -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}' \
+  | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+
+# Use token for authenticated requests
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/v1/organization/members
+```
+
+### Automated Tests (To Be Implemented)
 
 Tests should cover:
 - **Unit tests**: Model methods with mocked DB

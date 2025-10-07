@@ -36,7 +36,12 @@ export default function Login() {
     const result = await login(formData.username, formData.password);
 
     if (result.success) {
-      navigate('/');
+      // Check if user needs to change password
+      if (result.data.force_password_change) {
+        navigate('/force-password-change');
+      } else {
+        navigate('/');
+      }
     } else {
       setError(result.error);
     }

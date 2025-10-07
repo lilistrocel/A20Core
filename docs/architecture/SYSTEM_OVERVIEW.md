@@ -429,17 +429,26 @@ cp .env.docker .env
 # 3. Start all services
 docker-compose up -d
 
-# 4. Check health
+# 4. Create test admin user
+docker-compose exec -T postgres psql -U postgres -d a20core_hub < database/create-test-admin.sql
+
+# 5. Check health
 docker-compose ps
 curl http://localhost:3000/health
 
-# 5. View logs
+# 6. View logs
 docker-compose logs -f hub
 
 # Access Points:
 # - Hub API: http://localhost:3000
+# - Dashboard: http://localhost:8080
 # - pgAdmin: http://localhost:5050
 # - PostgreSQL: localhost:5432
+
+# Test Admin Credentials:
+# Username: admin
+# Password: admin123
+# Organization: admin-org
 ```
 
 ### Quick Start (Local)

@@ -277,6 +277,42 @@ function initializeAuthRoutes(authManager, orgManager, authMiddleware) {
     }
   });
 
+  /**
+   * Force password change (for temporary passwords)
+   * POST /api/v1/auth/force-password-change
+   */
+  router.post('/force-password-change', authMiddleware.authenticateUser, async (req, res) => {
+    try {
+      const { new_password } = req.body;
+
+      if (!new_password) {
+        return res.status(400).json({
+          success: false,
+          error: 'New password is required',
+        });
+      }
+
+      if (new_password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          error: 'Password must be at least 6 characters',
+        });
+      }
+
+      await authManager.forcePasswordChange(req.user.user_id, new_password);
+
+      res.json({
+        success: true,
+        message: 'Password changed successfully. Please login again with your new password.',
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  });
+
   return router;
 }
 

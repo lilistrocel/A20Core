@@ -173,6 +173,139 @@ class OrganizationManager {
   }
 
   /**
+   * Get all members for organization (active and suspended)
+   * @param {string} orgId - Organization ID
+   * @returns {Promise<Array>} Members with user details
+   */
+  async getOrganizationMembers(orgId) {
+    const result = await this.pool.query(
+      `SELECT
+        om.membership_id,
+        om.role,
+        om.status,
+        om.joined_at,
+        om.approved_at,
+        u.user_id,
+        u.username,
+        u.email,
+        u.full_name,
+        u.last_login
+       FROM organization_members om
+       JOIN users u ON om.user_id = u.user_id
+       WHERE om.org_id = $1 AND om.status IN ('active', 'suspended')
+       ORDER BY
+         CASE om.role
+           WHEN 'owner' THEN 1
+           WHEN 'admin' THEN 2
+           WHEN 'member' THEN 3
+         END,
+         om.joined_at ASC`,
+      [orgId]
+    );
+    return result.rows;
+  }
+
+  /**
+   * Revoke/suspend member access
+   * @param {string} membershipId - Membership ID
+   * @param {string} revokedBy - User ID who revoked
+   * @returns {Promise<Object>} Updated membership
+   */
+  async revokeMembership(membershipId, revokedBy) {
+    const result = await this.pool.query(
+      `UPDATE organization_members
+       SET status = 'suspended', updated_at = CURRENT_TIMESTAMP
+       WHERE membership_id = $1 AND role != 'owner'
+       RETURNING *`,
+      [membershipId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Cannot revoke owner access or membership not found');
+    }
+
+    return result.rows[0];
+  }
+
+  /**
+   * Reactivate suspended member
+   * @param {string} membershipId - Membership ID
+   * @param {string} reactivatedBy - User ID who reactivated
+   * @returns {Promise<Object>} Updated membership
+   */
+  async reactivateMembership(membershipId, reactivatedBy) {
+    const result = await this.pool.query(
+      `UPDATE organization_members
+       SET status = 'active', updated_at = CURRENT_TIMESTAMP
+       WHERE membership_id = $1 AND status = 'suspended'
+       RETURNING *`,
+      [membershipId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Membership not found or not suspended');
+    }
+
+    return result.rows[0];
+  }
+
+  /**
+   * Create user with temporary password and add to organization
+   * @param {Object} userData - User data
+   * @param {string} orgId - Organization ID
+   * @param {string} createdBy - User ID who created
+   * @returns {Promise<Object>} User and temp password
+   */
+  async createUserWithTempPassword(userData, orgId, createdBy) {
+    const { username, email, full_name } = userData;
+    const { hashPassword } = require('../utils/auth');
+    const crypto = require('crypto');
+
+    // Generate random 12-character temporary password
+    const tempPassword = crypto.randomBytes(6).toString('hex');
+    const passwordHash = await hashPassword(tempPassword);
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Create user with force_password_change flag
+      const userResult = await client.query(
+        `INSERT INTO users (username, email, password_hash, full_name, status, metadata)
+         VALUES ($1, $2, $3, $4, 'active', $5)
+         RETURNING user_id, username, email, full_name, status`,
+        [
+          username.toLowerCase(),
+          email.toLowerCase(),
+          passwordHash,
+          full_name,
+          JSON.stringify({ force_password_change: true })
+        ]
+      );
+      const user = userResult.rows[0];
+
+      // Add to organization as member with active status
+      await client.query(
+        `INSERT INTO organization_members (org_id, user_id, role, status, approved_at, approved_by, invited_by)
+         VALUES ($1, $2, 'member', 'active', CURRENT_TIMESTAMP, $3, $3)`,
+        [orgId, user.user_id, createdBy]
+      );
+
+      await client.query('COMMIT');
+
+      return {
+        user,
+        temporary_password: tempPassword,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
    * Get user's organizations
    * @param {string} userId - User ID
    * @returns {Promise<Array>} Organizations with membership info
