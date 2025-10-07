@@ -1,4 +1,4 @@
-# PostgreSQL with A20Core schemas pre-loaded
+# PostgreSQL with A64Core schemas pre-loaded
 
 FROM postgres:15-alpine
 
@@ -10,11 +10,11 @@ COPY schemas/*.sql /docker-entrypoint-initdb.d/
 # 2. 02_flexible_data_storage.sql
 
 # Set default database name
-ENV POSTGRES_DB=a20core_hub
+ENV POSTGRES_DB=a64core_hub
 
 # Expose PostgreSQL port
 EXPOSE 5432
 
 # Health check
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
-    CMD pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-a20core_hub} || exit 1
+    CMD pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-a64core_hub} || exit 1

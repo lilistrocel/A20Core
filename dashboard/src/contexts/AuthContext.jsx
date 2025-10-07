@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
 
       const response = await apiClient.post('/auth/login', payload);
 
-      const { user, token, organization, organizations, force_password_change } = response.data.data;
+      const { user, token, organization, organizations, force_password_change, membership_status } = response.data.data;
 
       localStorage.setItem('authToken', token);
       setToken(token);
@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
 
       return {
         success: true,
-        data: { organization, organizations, force_password_change },
+        data: { organization, organizations, force_password_change, membership_status },
       };
     } catch (error) {
       return {

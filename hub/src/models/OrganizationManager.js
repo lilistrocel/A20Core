@@ -250,6 +250,72 @@ class OrganizationManager {
   }
 
   /**
+   * Permanently delete a suspended member
+   * Deletes the user account and all related data
+   * Can only delete suspended members, not owners
+   * @param {string} membershipId - Membership ID
+   * @param {string} deletedBy - User ID who performed deletion
+   * @returns {Promise<Object>} Deletion summary
+   */
+  async deleteMember(membershipId, deletedBy) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Get membership details first
+      const membershipResult = await client.query(
+        `SELECT om.*, u.username, u.email
+         FROM organization_members om
+         JOIN users u ON om.user_id = u.user_id
+         WHERE om.membership_id = $1 AND om.status = 'suspended' AND om.role != 'owner'`,
+        [membershipId]
+      );
+
+      if (membershipResult.rows.length === 0) {
+        throw new Error('Can only delete suspended members (not owners)');
+      }
+
+      const membership = membershipResult.rows[0];
+      const userId = membership.user_id;
+
+      // Delete in order (respecting foreign key constraints):
+      
+      // 1. Delete user sessions
+      await client.query(
+        `DELETE FROM user_sessions WHERE user_id = $1`,
+        [userId]
+      );
+
+      // 2. Delete organization memberships (all orgs this user is part of)
+      await client.query(
+        `DELETE FROM organization_members WHERE user_id = $1`,
+        [userId]
+      );
+
+      // 3. Delete user account
+      await client.query(
+        `DELETE FROM users WHERE user_id = $1`,
+        [userId]
+      );
+
+      await client.query('COMMIT');
+
+      return {
+        deleted: true,
+        user_id: userId,
+        username: membership.username,
+        email: membership.email,
+        message: 'Member permanently deleted. Username and email are now available for reuse.',
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
    * Create user with temporary password and add to organization
    * @param {Object} userData - User data
    * @param {string} orgId - Organization ID

@@ -66,7 +66,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 # Management
 docker-compose restart hub           # Restart Hub service
 docker-compose exec hub sh           # Shell into Hub container
-docker-compose exec postgres psql -U postgres -d a20core_hub
+docker-compose exec postgres psql -U postgres -d a64core_hub
 docker-compose down                  # Stop (keeps data)
 docker-compose down -v               # Stop and delete volumes (DESTRUCTIVE)
 
@@ -83,9 +83,9 @@ npm start                # Production server
 ### Database (Local Only)
 ```bash
 # Manual database setup (run once)
-createdb a20core_hub
-psql -d a20core_hub -f database/schemas/01_core_tables.sql
-psql -d a20core_hub -f database/schemas/02_flexible_data_storage.sql
+createdb a64core_hub
+psql -d a64core_hub -f database/schemas/01_core_tables.sql
+psql -d a64core_hub -f database/schemas/02_flexible_data_storage.sql
 
 # Or use npm script (if DB exists)
 npm run db:init
@@ -195,7 +195,7 @@ Environment variables (see `config/.env.example` for local, `.env.docker` for Do
 # Database - REQUIRED
 DB_HOST=postgres        # Use 'postgres' in Docker, 'localhost' for local
 DB_PORT=5432
-DB_NAME=a20core_hub
+DB_NAME=a64core_hub
 DB_USER=postgres
 DB_PASSWORD=postgres    # CHANGE IN PRODUCTION
 
@@ -324,7 +324,7 @@ When creating a new micro-app:
 2. Add service to `docker-compose.yml` with Hub dependency
 3. Set `HUB_URL=http://hub:3000` (use service name, not localhost)
 4. Add API key to `.env` and reference in compose file
-5. Connect to `a20core-network` for inter-service communication
+5. Connect to `a64core-network` for inter-service communication
 
 ### Docker Development Workflow
 ```bash
@@ -337,7 +337,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 docker-compose logs -f hub
 
 # 4. Access database
-docker-compose exec postgres psql -U postgres -d a20core_hub
+docker-compose exec postgres psql -U postgres -d a64core_hub
 
 # 5. Rebuild after dependency changes
 docker-compose build hub && docker-compose up -d hub
@@ -346,8 +346,8 @@ docker-compose build hub && docker-compose up -d hub
 ### Docker Debugging
 - **Attach debugger**: Connect to `localhost:9229` (dev mode only)
 - **Shell access**: `docker-compose exec hub sh`
-- **Database queries**: `docker-compose exec postgres psql -U postgres -d a20core_hub`
-- **Network inspection**: `docker network inspect a20core-network`
+- **Database queries**: `docker-compose exec postgres psql -U postgres -d a64core_hub`
+- **Network inspection**: `docker network inspect a64core-network`
 - **Health checks**: `docker-compose ps` shows service health
 
 ### Environment Variables in Docker
@@ -365,7 +365,7 @@ docker-compose build hub && docker-compose up -d hub
 ```
 Username: admin
 Password: admin123
-Email: admin@a20core.local
+Email: admin@a64core.local
 Organization: admin-org
 Role: owner
 ```
@@ -373,7 +373,7 @@ Role: owner
 **Creating the test admin:**
 ```bash
 # Run the SQL script to create/recreate test admin
-docker-compose exec -T postgres psql -U postgres -d a20core_hub < database/create-test-admin.sql
+docker-compose exec -T postgres psql -U postgres -d a64core_hub < database/create-test-admin.sql
 ```
 
 **Testing API endpoints:**
@@ -387,6 +387,41 @@ TOKEN=$(curl -s -X POST http://localhost:3000/api/v1/auth/login \
 # Use token for authenticated requests
 curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/v1/organization/members
 ```
+
+### Password Management Testing
+
+**Test Force Password Change Flow:**
+1. Admin creates user from User Management page
+2. System generates 12-character temporary password (e.g., `a3f4e8b2c1d5`)
+3. New user logs in with temporary password
+4. System automatically redirects to `/force-password-change` page
+5. User must change password (requirements: 6+ chars, uppercase, lowercase, number)
+6. After successful change, user is logged out
+7. User logs in with new password
+
+**Test Regular Password Change:**
+1. Any user navigates to Settings page (click "Settings" in sidebar)
+2. Go to "Security" tab
+3. Enter current password, new password, confirm password
+4. System validates password strength (Weak/Medium/Strong indicator)
+5. Real-time validation shows green checkmarks for met requirements
+6. Upon success, user is automatically logged out after 2 seconds
+7. User logs in with new password
+
+**Test Suspended User Flow:**
+1. Admin suspends user from User Management
+2. Suspended user tries to login
+3. System redirects to `/limbo` page with "Account Suspended" message
+4. User cannot access dashboard
+5. Admin reactivates user with green "Reactivate" button
+6. User can now login successfully
+
+**Test Pending User Flow:**
+1. New user registers and joins existing organization
+2. User tries to login
+3. System redirects to `/limbo` page with "Approval Pending" message
+4. Admin approves from Pending Members page
+5. User can now login successfully
 
 ### Automated Tests (To Be Implemented)
 

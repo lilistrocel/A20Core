@@ -50,7 +50,7 @@ sudo systemctl start postgresql
 psql -U postgres
 
 # In PostgreSQL prompt:
-CREATE DATABASE a20core_hub;
+CREATE DATABASE a64core_hub;
 \q
 ```
 
@@ -58,7 +58,7 @@ Or use pgAdmin:
 1. Open pgAdmin
 2. Right-click "Databases"
 3. Create > Database
-4. Name: `a20core_hub`
+4. Name: `a64core_hub`
 
 ### Step 3: Configure Environment
 
@@ -81,7 +81,7 @@ JWT_SECRET=change_this_to_a_random_secret_key
 ```env
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=a20core_hub
+DB_NAME=a64core_hub
 DB_USER=postgres
 ```
 
@@ -89,12 +89,12 @@ DB_USER=postgres
 
 ```bash
 # Run schema files
-psql -U postgres -d a20core_hub -f database/schemas/01_core_tables.sql
-psql -U postgres -d a20core_hub -f database/schemas/02_flexible_data_storage.sql
+psql -U postgres -d a64core_hub -f database/schemas/01_core_tables.sql
+psql -U postgres -d a64core_hub -f database/schemas/02_flexible_data_storage.sql
 ```
 
 Or using pgAdmin:
-1. Select `a20core_hub` database
+1. Select `a64core_hub` database
 2. Tools > Query Tool
 3. Open and execute `01_core_tables.sql`
 4. Open and execute `02_flexible_data_storage.sql`
@@ -105,7 +105,7 @@ Check all dependencies are installed:
 
 ```bash
 # Hub dependencies
-cd /c/Code/A20Core
+cd /c/Code/A64Core
 npm install
 # ✅ All dependencies installed successfully
 
@@ -125,7 +125,7 @@ npm install
 ### Terminal 1: Start the Hub
 
 ```bash
-cd /c/Code/A20Core
+cd /c/Code/A64Core
 npm run dev
 ```
 
@@ -151,7 +151,7 @@ npm run dev
 ### Terminal 2: Start the Dashboard
 
 ```bash
-cd /c/Code/A20Core/dashboard
+cd /c/Code/A64Core/dashboard
 npm run dev
 ```
 
@@ -171,7 +171,7 @@ npm run dev
 ### Terminal 3: Start Demo App
 
 ```bash
-cd /c/Code/A20Core/micro-apps/demo-text-to-hex
+cd /c/Code/A64Core/micro-apps/demo-text-to-hex
 npm run dev
 ```
 
@@ -295,12 +295,12 @@ curl -X POST http://localhost:3002/api/v1/convert \
    ```env
    DB_USER=postgres
    DB_PASSWORD=your_actual_password
-   DB_NAME=a20core_hub
+   DB_NAME=a64core_hub
    ```
 
 3. Test connection:
    ```bash
-   psql -U postgres -d a20core_hub -c "SELECT NOW();"
+   psql -U postgres -d a64core_hub -c "SELECT NOW();"
    ```
 
 ### Issue: "Port already in use"
@@ -345,7 +345,7 @@ app.use(cors({
 After setup, verify:
 
 - [ ] PostgreSQL installed and running
-- [ ] Database `a20core_hub` created
+- [ ] Database `a64core_hub` created
 - [ ] Schema tables created (run SQL files)
 - [ ] `.env` configured with correct credentials
 - [ ] Hub running on port 3000

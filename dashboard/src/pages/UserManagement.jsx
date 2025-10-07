@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   Shield,
+  Trash2,
 } from 'lucide-react';
 
 export default function UserManagement() {
@@ -97,6 +98,38 @@ export default function UserManagement() {
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to reactivate member');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleDelete = async (membershipId, username) => {
+    if (!confirm(
+      `⚠️ PERMANENT ACTION ⚠️\n\n` +
+      `Are you sure you want to permanently delete ${username}?\n\n` +
+      `This will:\n` +
+      `• Delete the user account\n` +
+      `• Remove all sessions\n` +
+      `• Free up the username and email for reuse\n\n` +
+      `This action CANNOT be undone!`
+    )) {
+      return;
+    }
+
+    try {
+      setProcessing(membershipId);
+      setError('');
+      setSuccessMessage('');
+
+      const response = await apiClient.delete(`/organization/delete-member/${membershipId}`);
+
+      setSuccessMessage(response.data.message || `${username} has been permanently deleted`);
+      // Reload members list
+      await loadMembers();
+
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete member');
     } finally {
       setProcessing(null);
     }
@@ -261,44 +294,66 @@ export default function UserManagement() {
                   {member.last_login ? new Date(member.last_login).toLocaleDateString() : 'Never'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {member.role !== 'owner' && member.status === 'active' && (
-                    <button
-                      onClick={() => handleRevoke(member.membership_id, member.username)}
-                      disabled={processing === member.membership_id}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {processing === member.membership_id ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Revoking...
-                        </>
-                      ) : (
-                        <>
-                          <UserX className="w-4 h-4 mr-2" />
-                          Revoke
-                        </>
-                      )}
-                    </button>
-                  )}
-                  {member.role !== 'owner' && member.status === 'suspended' && (
-                    <button
-                      onClick={() => handleReactivate(member.membership_id, member.username)}
-                      disabled={processing === member.membership_id}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {processing === member.membership_id ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Reactivating...
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          Reactivate
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <div className="flex justify-end space-x-2">
+                    {member.role !== 'owner' && member.status === 'active' && (
+                      <button
+                        onClick={() => handleRevoke(member.membership_id, member.username)}
+                        disabled={processing === member.membership_id}
+                        className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {processing === member.membership_id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Revoking...
+                          </>
+                        ) : (
+                          <>
+                            <UserX className="w-4 h-4 mr-2" />
+                            Revoke
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {member.role !== 'owner' && member.status === 'suspended' && (
+                      <>
+                        <button
+                          onClick={() => handleReactivate(member.membership_id, member.username)}
+                          disabled={processing === member.membership_id}
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {processing === member.membership_id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Reactivating...
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Reactivate
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(member.membership_id, member.username)}
+                          disabled={processing === member.membership_id}
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-gray-700 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Permanently delete this user and free up their username/email"
+                        >
+                          {processing === member.membership_id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </>
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

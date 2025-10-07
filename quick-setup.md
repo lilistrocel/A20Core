@@ -35,20 +35,20 @@ If it asks for a password, that's the password you need in `.env`
 
 ```powershell
 # Connect and create database
-psql -U postgres -c "CREATE DATABASE a20core_hub;"
+psql -U postgres -c "CREATE DATABASE a64core_hub;"
 
 # Verify it was created
-psql -U postgres -c "\l" | findstr a20core_hub
+psql -U postgres -c "\l" | findstr a64core_hub
 ```
 
 ## Step 4: Run Schema Files
 
 ```powershell
 # Run core tables schema
-psql -U postgres -d a20core_hub -f database/schemas/01_core_tables.sql
+psql -U postgres -d a64core_hub -f database/schemas/01_core_tables.sql
 
 # Run flexible storage schema
-psql -U postgres -d a20core_hub -f database/schemas/02_flexible_data_storage.sql
+psql -U postgres -d a64core_hub -f database/schemas/02_flexible_data_storage.sql
 ```
 
 ## Step 5: Restart Hub
@@ -103,7 +103,7 @@ You should see:
 
 Check if database already exists:
 ```powershell
-psql -U postgres -c "\l" | findstr a20core
+psql -U postgres -c "\l" | findstr a64core
 ```
 
 If it exists, just run the schema files.
@@ -112,10 +112,10 @@ If it exists, just run the schema files.
 
 ```powershell
 # Test connection
-psql -U postgres -d a20core_hub -c "SELECT NOW();"
+psql -U postgres -d a64core_hub -c "SELECT NOW();"
 
 # Check tables
-psql -U postgres -d a20core_hub -c "\dt"
+psql -U postgres -d a64core_hub -c "\dt"
 
 # Should show 20+ tables if schema is loaded
 ```

@@ -141,7 +141,7 @@ if (failCount === 0) {
   console.log('✨ All checks passed! Your setup looks good.\n');
   console.log('Next steps:');
   console.log('  1. Install PostgreSQL if not already installed');
-  console.log('  2. Create database: createdb a20core_hub');
+  console.log('  2. Create database: createdb a64core_hub');
   console.log('  3. Run schema files (see SETUP_GUIDE.md)');
   console.log('  4. Update .env with your database credentials');
   console.log('  5. Start the Hub: npm run dev');

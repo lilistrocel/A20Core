@@ -81,7 +81,7 @@ class AuthManager {
 
     // Get user's organizations
     const orgsResult = await this.pool.query(
-      `SELECT o.org_id, o.org_name, o.display_name, om.role, om.status
+      `SELECT o.org_id, o.org_name, o.display_name, om.role, om.status as membership_status
        FROM organizations o
        JOIN organization_members om ON o.org_id = om.org_id
        WHERE om.user_id = $1 AND o.status = 'active'
@@ -93,20 +93,34 @@ class AuthManager {
 
     // Determine which organization to log into
     let selectedOrg = null;
+    let membershipStatus = null;
+    
     if (orgName) {
       selectedOrg = organizations.find(
-        (o) => o.org_name === orgName && o.status === 'active'
+        (o) => o.org_name === orgName && o.membership_status === 'active'
       );
       if (!selectedOrg) {
-        throw new Error('You do not have access to this organization');
+        // Check if user has membership but not active
+        const inactiveOrg = organizations.find((o) => o.org_name === orgName);
+        if (inactiveOrg) {
+          membershipStatus = inactiveOrg.membership_status;
+        } else {
+          throw new Error('You do not have access to this organization');
+        }
       }
     } else if (organizations.length > 0) {
       // Use first active organization
-      selectedOrg = organizations.find((o) => o.status === 'active');
+      selectedOrg = organizations.find((o) => o.membership_status === 'active');
+      
+      // If no active org, get the status of the first one
+      if (!selectedOrg && organizations.length > 0) {
+        membershipStatus = organizations[0].membership_status;
+      }
     }
 
-    if (!selectedOrg && user.status !== 'active') {
-      throw new Error('Account pending approval');
+    // If no active organization found, check why
+    if (!selectedOrg && !membershipStatus && user.status !== 'active') {
+      membershipStatus = 'pending';
     }
 
     // Generate JWT token
@@ -150,7 +164,9 @@ class AuthManager {
     delete user.password_hash;
 
     // Check if user needs to change password
-    const force_password_change = user.metadata?.force_password_change || false;
+    // Ensure metadata is an object (PostgreSQL returns JSONB as object, but double-check)
+    const userMetadata = typeof user.metadata === 'string' ? JSON.parse(user.metadata) : (user.metadata || {});
+    const force_password_change = userMetadata.force_password_change === true;
 
     return {
       user,
@@ -158,6 +174,7 @@ class AuthManager {
       organization: selectedOrg,
       organizations,
       force_password_change,
+      membership_status: membershipStatus, // 'pending', 'suspended', or null if active
     };
   }
 

@@ -13,13 +13,13 @@
 Run `create-test-admin.sql` to create a test admin account:
 
 ```bash
-docker-compose exec -T postgres psql -U postgres -d a20core_hub < database/create-test-admin.sql
+docker-compose exec -T postgres psql -U postgres -d a64core_hub < database/create-test-admin.sql
 ```
 
 **Credentials:**
 - Username: `admin`
 - Password: `admin123`
-- Email: `admin@a20core.local`
+- Email: `admin@a64core.local`
 - Organization: `admin-org`
 - Role: `owner`
 
@@ -40,7 +40,7 @@ docker-compose up -d
 ```
 
 The PostgreSQL container will:
-1. Create the `a20core_hub` database
+1. Create the `a64core_hub` database
 2. Run all `.sql` files in `database/schemas/` in alphabetical order
 3. Enable required PostgreSQL extensions
 
@@ -48,15 +48,15 @@ The PostgreSQL container will:
 
 ```bash
 # Create database
-createdb a20core_hub
+createdb a64core_hub
 
 # Run schema files in order
-psql -d a20core_hub -f database/schemas/01_core_tables.sql
-psql -d a20core_hub -f database/schemas/02_flexible_data_storage.sql
-psql -d a20core_hub -f database/schemas/03_organizations_and_auth.sql
+psql -d a64core_hub -f database/schemas/01_core_tables.sql
+psql -d a64core_hub -f database/schemas/02_flexible_data_storage.sql
+psql -d a64core_hub -f database/schemas/03_organizations_and_auth.sql
 
 # Create test admin
-psql -d a20core_hub -f database/create-test-admin.sql
+psql -d a64core_hub -f database/create-test-admin.sql
 ```
 
 ## Database Access
@@ -64,29 +64,29 @@ psql -d a20core_hub -f database/create-test-admin.sql
 ### Via Docker
 ```bash
 # Access PostgreSQL shell
-docker-compose exec postgres psql -U postgres -d a20core_hub
+docker-compose exec postgres psql -U postgres -d a64core_hub
 
 # Run SQL file
-docker-compose exec -T postgres psql -U postgres -d a20core_hub < your-file.sql
+docker-compose exec -T postgres psql -U postgres -d a64core_hub < your-file.sql
 
 # Dump database
-docker-compose exec postgres pg_dump -U postgres a20core_hub > backup.sql
+docker-compose exec postgres pg_dump -U postgres a64core_hub > backup.sql
 ```
 
 ### Via Local psql
 ```bash
 # Connect to database
-psql -h localhost -p 5432 -U postgres -d a20core_hub
+psql -h localhost -p 5432 -U postgres -d a64core_hub
 
 # Run SQL file
-psql -h localhost -p 5432 -U postgres -d a20core_hub -f your-file.sql
+psql -h localhost -p 5432 -U postgres -d a64core_hub -f your-file.sql
 ```
 
 ### Via pgAdmin
 Access pgAdmin at http://localhost:5050
 
 **Default credentials (Docker):**
-- Email: `admin@a20core.local`
+- Email: `admin@a64core.local`
 - Password: `admin`
 
 ## Common Database Operations

@@ -419,8 +419,8 @@ docker-compose up -d
 ### Quick Start with Docker
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-org/a20core.git
-cd a20core
+git clone https://github.com/your-org/a64core.git
+cd a64core
 
 # 2. Configure environment
 cp .env.docker .env
@@ -430,7 +430,7 @@ cp .env.docker .env
 docker-compose up -d
 
 # 4. Create test admin user
-docker-compose exec -T postgres psql -U postgres -d a20core_hub < database/create-test-admin.sql
+docker-compose exec -T postgres psql -U postgres -d a64core_hub < database/create-test-admin.sql
 
 # 5. Check health
 docker-compose ps
@@ -454,8 +454,8 @@ docker-compose logs -f hub
 ### Quick Start (Local)
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-org/a20core.git
-cd a20core
+git clone https://github.com/your-org/a64core.git
+cd a64core
 
 # 2. Install dependencies
 npm install
@@ -491,7 +491,7 @@ curl -X POST http://localhost:3000/api/v1/apps/register \
 
 ## Support
 
-- **Documentation**: [docs.a20core.com](https://docs.a20core.com)
-- **Issues**: [GitHub Issues](https://github.com/your-org/a20core/issues)
-- **Community**: [Discord](https://discord.gg/a20core)
-- **Email**: support@a20core.com
+- **Documentation**: [docs.a64core.com](https://docs.a64core.com)
+- **Issues**: [GitHub Issues](https://github.com/your-org/a64core/issues)
+- **Community**: [Discord](https://discord.gg/a64core)
+- **Email**: support@a64core.com

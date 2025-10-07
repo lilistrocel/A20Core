@@ -9,7 +9,7 @@ The A20 Core Dashboard is a **dynamic, modular frontend** that automatically ada
 ### 1. Start the Hub
 
 ```bash
-cd A20Core
+cd A64Core
 
 # Install Hub dependencies
 npm install
@@ -19,9 +19,9 @@ cp config/.env.example .env
 # Edit .env with database credentials
 
 # Initialize database
-createdb a20core_hub
-psql -d a20core_hub -f database/schemas/01_core_tables.sql
-psql -d a20core_hub -f database/schemas/02_flexible_data_storage.sql
+createdb a64core_hub
+psql -d a64core_hub -f database/schemas/01_core_tables.sql
+psql -d a64core_hub -f database/schemas/02_flexible_data_storage.sql
 
 # Start Hub
 npm run dev

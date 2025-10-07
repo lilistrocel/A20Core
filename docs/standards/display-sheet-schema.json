@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://a20core.com/schemas/display-sheet/v1.0",
+  "$id": "https://a64core.com/schemas/display-sheet/v1.0",
   "title": "Display Sheet Schema",
   "description": "Meta-schema for micro-app display and UI integration",
   "type": "object",

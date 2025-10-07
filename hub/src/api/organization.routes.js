@@ -164,6 +164,36 @@ function initializeOrganizationRoutes(orgManager, authMiddleware) {
   );
 
   /**
+   * Permanently delete suspended member (admin only)
+   * DELETE /api/v1/organization/delete-member/:membershipId
+   * Can only delete suspended members (not owners)
+   * Frees up username and email for reuse
+   */
+  router.delete(
+    '/delete-member/:membershipId',
+    authMiddleware.requireOrgAdmin,
+    async (req, res) => {
+      try {
+        const result = await orgManager.deleteMember(
+          req.params.membershipId,
+          req.user.user_id
+        );
+
+        res.json({
+          success: true,
+          message: result.message,
+          data: result,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+  );
+
+  /**
    * Create user with temporary password (admin only)
    * POST /api/v1/organization/create-user
    */

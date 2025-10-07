@@ -1,6 +1,6 @@
-# Docker Setup Guide - A20Core
+# Docker Setup Guide - A64Core
 
-Complete Docker setup for the A20Core microservices hub architecture.
+Complete Docker setup for the A64Core microservices hub architecture.
 
 ## Quick Start
 
@@ -27,7 +27,7 @@ docker-compose logs -f hub
 The Docker setup includes:
 
 - **postgres** - PostgreSQL 15 with schemas pre-loaded
-- **hub** - A20Core Hub API Gateway (Node.js)
+- **hub** - A64Core Hub API Gateway (Node.js)
 - **dashboard** - React frontend (Vite + Nginx)
 - **pgadmin** - Database management UI (optional)
 
@@ -91,7 +91,7 @@ docker-compose up -d
 
 ## Networking
 
-All services communicate via the `a20core-network` bridge network.
+All services communicate via the `a64core-network` bridge network.
 
 **Container-to-container**: Use service names as hostnames
 ```javascript
@@ -102,7 +102,7 @@ DB_HOST=postgres  // NOT localhost
 **Host-to-container**: Use localhost with mapped ports
 ```bash
 # From your machine
-psql -h localhost -p 5432 -U postgres -d a20core_hub
+psql -h localhost -p 5432 -U postgres -d a64core_hub
 curl http://localhost:3000/api/v1/apps
 ```
 
@@ -110,19 +110,19 @@ curl http://localhost:3000/api/v1/apps
 
 Persistent data is stored in named volumes:
 
-- `a20core-postgres-data` - Database files
-- `a20core-hub-logs` - Application logs
-- `a20core-pgadmin-data` - pgAdmin configuration
+- `a64core-postgres-data` - Database files
+- `a64core-hub-logs` - Application logs
+- `a64core-pgadmin-data` - pgAdmin configuration
 
 ```bash
 # List volumes
-docker volume ls | grep a20core
+docker volume ls | grep a64core
 
 # Inspect volume
-docker volume inspect a20core-postgres-data
+docker volume inspect a64core-postgres-data
 
 # Backup database volume
-docker run --rm -v a20core-postgres-data:/data -v $(pwd):/backup \
+docker run --rm -v a64core-postgres-data:/data -v $(pwd):/backup \
   alpine tar czf /backup/postgres-backup.tar.gz /data
 ```
 
@@ -135,7 +135,7 @@ All services have built-in health checks:
 docker-compose ps
 
 # Inspect specific service
-docker inspect a20core-hub | grep -A 10 Health
+docker inspect a64core-hub | grep -A 10 Health
 
 # Manual health check
 curl http://localhost:3000/health
@@ -155,7 +155,7 @@ docker-compose logs --tail=100 postgres
 
 # Shell access
 docker-compose exec hub sh
-docker-compose exec postgres psql -U postgres -d a20core_hub
+docker-compose exec postgres psql -U postgres -d a64core_hub
 ```
 
 ## Common Commands
@@ -209,12 +209,12 @@ services:
   production-manager:
     build:
       context: ./micro-apps/production-manager
-    container_name: a20core-production-manager
+    container_name: a64core-production-manager
     environment:
       HUB_URL: http://hub:3000
       API_KEY: ${PRODUCTION_MANAGER_API_KEY}
     networks:
-      - a20core-network
+      - a64core-network
     depends_on:
       hub:
         condition: service_healthy
@@ -231,7 +231,7 @@ Required variables (set in `.env`):
 
 ```bash
 # Database
-DB_NAME=a20core_hub
+DB_NAME=a64core_hub
 DB_USER=postgres
 DB_PASSWORD=<secure-password>
 
@@ -269,7 +269,7 @@ docker-compose ps postgres
 docker-compose logs postgres
 
 # Verify network
-docker network inspect a20core-network
+docker network inspect a64core-network
 ```
 
 ### Hub won't start
@@ -341,20 +341,20 @@ Before production deployment:
 ### Backup
 ```bash
 # Database dump
-docker-compose exec postgres pg_dump -U postgres a20core_hub > backup.sql
+docker-compose exec postgres pg_dump -U postgres a64core_hub > backup.sql
 
 # Volume backup
-docker run --rm -v a20core-postgres-data:/data -v $(pwd):/backup \
+docker run --rm -v a64core-postgres-data:/data -v $(pwd):/backup \
   alpine tar czf /backup/db-$(date +%Y%m%d).tar.gz /data
 ```
 
 ### Restore
 ```bash
 # From SQL dump
-cat backup.sql | docker-compose exec -T postgres psql -U postgres -d a20core_hub
+cat backup.sql | docker-compose exec -T postgres psql -U postgres -d a64core_hub
 
 # From volume backup
-docker run --rm -v a20core-postgres-data:/data -v $(pwd):/backup \
+docker run --rm -v a64core-postgres-data:/data -v $(pwd):/backup \
   alpine tar xzf /backup/db-20240101.tar.gz -C /
 docker-compose restart postgres
 ```

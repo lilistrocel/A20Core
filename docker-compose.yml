@@ -6,10 +6,10 @@ services:
     build:
       context: ./database
       dockerfile: Dockerfile
-    container_name: a20core-postgres
+    container_name: a64core-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-a20core_hub}
+      POSTGRES_DB: ${DB_NAME:-a64core_hub}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD:-scram-sha-256}
@@ -21,26 +21,26 @@ services:
       # Custom initialization scripts (run after schemas)
       - ./database/init-scripts:/docker-entrypoint-initdb.d/init-scripts:ro
     networks:
-      - a20core-network
+      - a64core-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-a20core_hub}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-a64core_hub}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
 
-  # A20 Hub Service
+  # A64 Hub Service
   hub:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: a20core-hub
+    container_name: a64core-hub
     restart: unless-stopped
     environment:
       # Database connection
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-a20core_hub}
+      DB_NAME: ${DB_NAME:-a64core_hub}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
 
@@ -61,7 +61,7 @@ services:
       # Mount logs directory for persistence
       - hub_logs:/app/logs
     networks:
-      - a20core-network
+      - a64core-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,14 +77,14 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
-    container_name: a20core-dashboard
+    container_name: a64core-dashboard
     restart: unless-stopped
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
     ports:
       - "${DASHBOARD_PORT:-8080}:80"
     networks:
-      - a20core-network
+      - a64core-network
     depends_on:
       hub:
         condition: service_healthy
@@ -100,7 +100,7 @@ services:
     build:
       context: ./micro-apps/demo-text-to-hex
       dockerfile: Dockerfile
-    container_name: a20core-demo-text-to-hex
+    container_name: a64core-demo-text-to-hex
     restart: unless-stopped
     environment:
       HUB_URL: http://hub:3000
@@ -109,7 +109,7 @@ services:
     ports:
       - "3002:3002"
     networks:
-      - a20core-network
+      - a64core-network
     depends_on:
       hub:
         condition: service_healthy
@@ -123,10 +123,10 @@ services:
   # pgAdmin - Database Management UI (Optional - comment out if not needed)
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: a20core-pgadmin
+    container_name: a64core-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@a20core.local}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@a64core.local}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
@@ -135,19 +135,19 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:
-      - a20core-network
+      - a64core-network
     depends_on:
       - postgres
 
 networks:
-  a20core-network:
+  a64core-network:
     driver: bridge
-    name: a20core-network
+    name: a64core-network
 
 volumes:
   postgres_data:
-    name: a20core-postgres-data
+    name: a64core-postgres-data
   hub_logs:
-    name: a20core-hub-logs
+    name: a64core-hub-logs
   pgadmin_data:
-    name: a20core-pgadmin-data
+    name: a64core-pgadmin-data

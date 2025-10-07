@@ -1,5 +1,5 @@
 {
-  "name": "a20core-hub",
+  "name": "a64core-hub",
   "version": "1.0.0",
   "description": "Central Hub for A20 Core microservices architecture",
   "main": "hub/server.js",

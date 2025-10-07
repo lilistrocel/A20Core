@@ -130,6 +130,8 @@ function initializeAuthRoutes(authManager, orgManager, authMiddleware) {
           token: result.token,
           organization: result.organization,
           organizations: result.organizations,
+          force_password_change: result.force_password_change,
+          membership_status: result.membership_status,
         },
       });
     } catch (error) {

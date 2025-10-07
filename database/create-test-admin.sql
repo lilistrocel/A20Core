@@ -22,7 +22,7 @@ BEGIN
     INSERT INTO users (username, email, password_hash, full_name, status, is_active, metadata)
     VALUES (
         'admin',
-        'admin@a20core.local',
+        'admin@a64core.local',
         '$2b$10$6Pxaa2JM4SHV3kZUNOr0z.Kp8aGqc0Bw/fuT7nZNhF2eH9tGUFIwi',
         'System Administrator',
         'active',

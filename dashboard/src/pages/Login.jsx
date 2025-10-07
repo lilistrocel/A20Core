@@ -36,8 +36,18 @@ export default function Login() {
     const result = await login(formData.username, formData.password);
 
     if (result.success) {
+      // Check if user is suspended or pending
+      if (result.data.membership_status) {
+        // User has pending or suspended status
+        navigate('/limbo', { 
+          state: { 
+            status: result.data.membership_status,
+            organizationName: result.data.organizations?.[0]?.org_name
+          } 
+        });
+      }
       // Check if user needs to change password
-      if (result.data.force_password_change) {
+      else if (result.data.force_password_change) {
         navigate('/force-password-change');
       } else {
         navigate('/');

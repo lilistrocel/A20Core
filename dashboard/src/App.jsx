@@ -7,7 +7,9 @@ import Dashboard from './pages/Dashboard';
 import AppView from './pages/AppView';
 import PendingMembers from './pages/PendingMembers';
 import UserManagement from './pages/UserManagement';
+import Settings from './pages/Settings';
 import ForcePasswordChange from './pages/ForcePasswordChange';
+import Limbo from './pages/Limbo';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -19,6 +21,9 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Limbo - For suspended/pending users */}
+          <Route path="/limbo" element={<Limbo />} />
 
           {/* Force Password Change - Protected but no layout */}
           <Route
@@ -67,6 +72,16 @@ function App() {
               <ProtectedRoute>
                 <DashboardLayout>
                   <UserManagement />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <Settings />
                 </DashboardLayout>
               </ProtectedRoute>
             }

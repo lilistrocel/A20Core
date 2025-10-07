@@ -117,7 +117,7 @@ A20 Core provides a solid backbone for building modular microservices applicatio
 ## 📁 Project Structure
 
 ```
-A20Core/
+A64Core/
 ├── hub/                          # Central Hub
 │   ├── src/
 │   │   ├── api/
@@ -169,7 +169,7 @@ A20Core/
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd A20Core
+   cd A64Core
    ```
 
 2. **Install dependencies**
@@ -186,11 +186,11 @@ A20Core/
 4. **Initialize database**
    ```bash
    # Create database
-   createdb a20core_hub
+   createdb a64core_hub
 
    # Run schema
-   psql -d a20core_hub -f database/schemas/01_core_tables.sql
-   psql -d a20core_hub -f database/schemas/02_flexible_data_storage.sql
+   psql -d a64core_hub -f database/schemas/01_core_tables.sql
+   psql -d a64core_hub -f database/schemas/02_flexible_data_storage.sql
    ```
 
 5. **Start the Hub**
@@ -317,8 +317,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 - **Documentation**: [Full documentation](docs/)
-- **Issues**: [GitHub Issues](https://github.com/your-org/a20core/issues)
-- **Email**: support@a20core.com
+- **Issues**: [GitHub Issues](https://github.com/your-org/a64core/issues)
+- **Email**: support@a64core.com
 
 ## 🙏 Acknowledgments
 

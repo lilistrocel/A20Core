@@ -9,7 +9,7 @@ app_metadata:
   version: "1.0.0"
   communication_sheet_version: "1.0"
   description: "Demo micro-app that converts text strings to hexadecimal format"
-  maintainer: "demo@a20core.com"
+  maintainer: "demo@a64core.com"
 
 entities:
   - entity_name: "Conversion"
